@@ -23,38 +23,26 @@ typedef struct {
     FILE* fstream;
 } Afl_t;
 
-Afl_t* openAfl(const char* aflPath) {
-    if(aflPath == nullptr || *aflPath == '\0') {
-        return NULL;
-    }
-    FILE* fp = fopen(aflPath, "rb");
+/** opens an AFS file and builds the handle for it.
+ *
+ * @param aflPath path the the AFL file
+ * @return Handle to the constructed AFL struct, NULL if it failed.
+ */
+Afl_t* openAfl(const char* aflPath);
 
-    if(fp == NULL) {
-        puts("ERROR Afl::openAfl - AFL Filepath invalid.");
-        printf("Filepath: %s\n", aflPath);
-        return NULL;
-    }
-    Afl_t* afl = (Afl_t*)malloc(sizeof(Afl_t));
-    afl->fstream = fp;
+/** Gets the name of the file with the specified index.
+ *  Note that this function does not create a pointer, and thus
+ *  does not require the return pointer to be freed.
+ *
+ * @param afl path the the AFL file
+ * @param id index of the file
+ * @return char pointer to the name of the file.
+ */
+char* getAflName(Afl_t* afl, int id);
 
-    fread(&afl->head, 0x10, 1, afl->fstream);
-
-    afl->filenames = (char*)malloc(AFL_NAMEBUFFERSIZE * afl->head.filecount);
-    fread(afl->filenames, AFL_NAMEBUFFERSIZE, afl->head.filecount, fp);
-
-    fseek(fp, 0, SEEK_SET);
-
-    return afl;
-}
-
-char* getAflName(Afl_t* afl, int id) {
-    return AFL_NAME(afl, id);
-}
-
-void freeAfl(Afl_t* afl) {
-    fclose(afl->fstream);
-    free(afl->filenames);
-    free(afl);
-}
+/** Frees all AFL related memory.
+ * @param afl The AFL struct.
+ */
+void freeAfl(Afl_t* afl);
 
 #endif // AFL_H_INCLUDED
