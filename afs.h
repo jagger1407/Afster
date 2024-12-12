@@ -116,7 +116,12 @@ void importAfl(Afs_t* afs, Afl_t* afl, bool permament) {
         return;
     }
 
-    for(int i=0;i<afl->head.filecount;i++) {
+    if(afl->head.filecount != afs->header.entrycount) {
+        puts("WARNING: Afs::importAfl - AFS file count and AFL file count are mismatched.");
+        printf("AFS file count: %d\nAFL file count: %d\n", afs->header.entrycount, afl->head.filecount);
+    }
+
+    for(int i=0;i<afs->header.entrycount;i++) {
         memcpy(afs->meta[i].filename, AFL_NAME(afl, i), AFSMETA_NAMEBUFFERSIZE);
     }
     if(permament) {
@@ -313,8 +318,8 @@ Timestamp getLastModifiedDate(Afs_t* afs, int id) {
  * @return C-Style string containing the date.
  */
 char* timestampToString(Timestamp t) {
-    char* out = calloc(1, 40);
-    sprintf(out, "%.02d.%.02d.%.04d %.02d:%.02d:%.02d", t.day, t.month, t.year, t.hours, t.minutes, t.seconds);
+    char* out = calloc(1, 32);
+    sprintf(out, "%.2d.%.2d.%.4d %.2d:%.2d:%.2d", t.day, t.month, t.year, t.hours, t.minutes, t.seconds);
     return out;
 }
 

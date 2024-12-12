@@ -8,12 +8,7 @@ Additionally, this library can import AFL (AFS File List) files that house names
 
 ## Usage
 
-An example program + build script has been packaged with this library to showcase how it can be used. It first imports a file list (AFL), then uses it to extract the whole AFS into a folder.
-The example program will take 3 arguments:
-
-- arg1 = The AFS file to be extracted.
-- arg2 = The AFL file that houses file names or "n" to not import any AFL list.
-- arg3 = The path to an output folder, will be created if it doesn't exist yet.
+A folder with example programs has been packaged with this library to showcase how it can be used.
 
 ## Status
 
