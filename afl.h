@@ -8,7 +8,7 @@
 
 #define AFL_NAMEBUFFERSIZE 0x20
 
-#define AFL_NAME(x) (afl->filenames + (x * AFL_NAMEBUFFERSIZE))
+#define AFL_NAME(afl, x) (afl->filenames + (x * AFL_NAMEBUFFERSIZE))
 
 typedef struct {
     char identifier[4];
@@ -45,6 +45,10 @@ Afl_t* openAfl(const char* aflPath) {
     fseek(fp, 0, SEEK_SET);
 
     return afl;
+}
+
+char* getAflName(Afl_t* afl, int id) {
+    return AFL_NAME(afl, id);
 }
 
 void freeAfl(Afl_t* afl) {
