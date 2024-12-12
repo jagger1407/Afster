@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
 
     // Now, we create a table of all the elements within the AFS.
     // The metadata section shows that the maximum size of a name is 0x20
-    // aka 32 Bytes, hence the 32 char length of the first column here.
+    // aka 32 Bytes, hence the 32 char length of the 'Name' column here.
     puts(
         "+-------+----------------------------------+------------+---------------------+\n" \
         "| ID    | Name                             | Size       | Last Modified Date  |\n" \
@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
         // Now, the name.
         char name[AFSMETA_NAMEBUFFERSIZE];
         // In many cases, the name portion of the metadata is garbled, or
-        // Completely empty. For the latter, we need to create a string outselves.
+        // Completely empty. For the latter, we need to create a string ourselves.
         if(*afs->meta[i].filename == '\0') {
             sprintf(name, "blank_%d", i);
         }
@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
         char* lastMod = timestampToString(t);
         strncpy(line+58, lastMod, 20);
         line[strlen(lastMod)+58] = ' ';
-        // I feel it important to mention that because timestampToString()
+        // I feel it's important to mention that because timestampToString()
         // returns a char* that was allocated in said function, it is necessary to
         // free it after usage in order to ensure memory safety.
         free(lastMod);

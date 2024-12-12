@@ -5,7 +5,7 @@
 
 /*
  * This is an example program used to demonstrate how one can use this library.
- * In this case, we import an AFL file list and import it into the metadata section of the AFS file.
+ * In this case, we open an AFL file list and import it into the metadata section of the AFS file.
  *
  * We take 2 arguments:
  * arg1 = A path to an AFS File
@@ -39,8 +39,11 @@ int main(int argc, char** argv) {
     // Now with both of the handles created, all that's left is to combine the 2.
 
     // Unlike extract_afs.c, here, we pass true to the function
-    // in order to write the names into the AFS file.
+    // in order to write the names into the AFS file permanently.
     importAfl(afs, afl, true);
 
+    // And of course, we free both of these handles after usage.
+    freeAfl(afl);
+    freeAfs(afs);
     return 0;
 }

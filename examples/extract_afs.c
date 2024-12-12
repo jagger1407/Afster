@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
     // And this one function call here fully extracts the entire AFS File.
     extractWholeAfs(afs, argv[3]);
 
-    // Lastly we make sure that no memory leaks by freeing all AFS related memory.
+    // Lastly we make sure that no memory leaks occur by freeing all AFS related memory.
     freeAfs(afs);
     return 0;
 }
