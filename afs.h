@@ -66,7 +66,7 @@ typedef struct {
  * @return Handle to the constructed AFS struct, NULL if it failed.
  */
 Afs_t* openAfs(char* filePath) {
-    if(filePath == nullptr || *filePath == '\0') {
+    if(filePath == NULL || *filePath == '\0') {
         return NULL;
     }
     FILE* fp = fopen(filePath, "rb+");
@@ -117,7 +117,7 @@ void importAfl(Afs_t* afs, Afl_t* afl, bool permament) {
     }
 
     for(int i=0;i<afl->head.filecount;i++) {
-        memcpy(afs->meta[i].filename, AFL_NAME(i), AFSMETA_NAMEBUFFERSIZE);
+        memcpy(afs->meta[i].filename, AFL_NAME(afl, i), AFSMETA_NAMEBUFFERSIZE);
     }
     if(permament) {
         AfsEntryInfo metaInfo = afs->header.entryinfo[afs->header.entrycount];
@@ -143,9 +143,15 @@ void freeAfs(Afs_t* afs) {
  * @param id The index of the extracted file
  * @param output_folderpath The path to the folder where the file should be extracted to.
  */
-void extractFile(Afs_t* afs, int id, const char* output_folderpath) {
+void extractEntryToFile(Afs_t* afs, int id, const char* output_folderpath) {
     if(afs == NULL || afs->fstream == NULL) {
-        puts("ERROR Afs::extractFile - Invalid AFS pointer (afs or afs->fstream).");
+        puts("ERROR Afs::extractEntryToFile - Invalid AFS pointer (afs or afs->fstream).");
+        return;
+    }
+
+    if(id < 0 || id > afs->header.entrycount) {
+        puts("ERROR Afs::extractEntryToFile - Invalid entry ID.");
+        printf("Entry ID: %d\tEntry Count: %d\n", id, afs->header.entrycount);
         return;
     }
 
@@ -154,7 +160,7 @@ void extractFile(Afs_t* afs, int id, const char* output_folderpath) {
     u8 buffer[size];
 
     if(output_folderpath == NULL || *output_folderpath == 0x00 ) {
-        puts("ERROR Afs::extractFile - output_folderpath invalid.");
+        puts("ERROR Afs::extractEntryToFile - output_folderpath invalid.");
         return;
     }
 
@@ -173,7 +179,7 @@ void extractFile(Afs_t* afs, int id, const char* output_folderpath) {
     FILE* outfile = fopen(outpath, "wb");
 
     if(outfile == NULL) {
-        puts("ERROR Afs::extractFile - File pointer failed to create.");
+        puts("ERROR Afs::extractEntryToFile - File pointer failed to create.");
         printf("outfile path: %s\n", outpath);
         return;
     }
@@ -183,6 +189,33 @@ void extractFile(Afs_t* afs, int id, const char* output_folderpath) {
     fwrite(buffer, 1, size, outfile);
 
     fclose(outfile);
+}
+
+/** Extracts a singular file from the AFS to the specified folder.
+ *
+ * @param afs The AFS struct
+ * @param id The index of the extracted file
+ * @return A buffer containing the data of the entry.
+ */
+u8* extractEntryToBuffer(Afs_t* afs, int id) {
+    if(afs == NULL || afs->fstream == NULL) {
+        puts("ERROR Afs::extractEntryToBuffer - Invalid AFS pointer (afs or afs->fstream).");
+        return NULL;
+    }
+
+    if(id < 0 || id > afs->header.entrycount) {
+        puts("ERROR Afs::extractEntryToBuffer - Invalid entry ID.");
+        printf("Entry ID: %d\tEntry Count: %d\n", id, afs->header.entrycount);
+        return NULL;
+    }
+
+    AfsEntryInfo info = afs->header.entryinfo[id];
+
+    u8* buffer = (u8*)malloc(info.size);
+    fseek(afs->fstream, info.offset, SEEK_SET);
+    fread(buffer, 1, info.size, afs->fstream);
+
+    return buffer;
 }
 
 /** Extracts all files within the AFS into a specified folder.
@@ -263,14 +296,25 @@ void extractWholeAfs(Afs_t* afs, const char* output_folderpath) {
     }
 }
 
-/** Gets the last modified metadata as a string.
+/** Gets the last modified date of a specific entry in the AFS.
  *
- * @param meta Metadata of the AFS Entry.
+ * @param afs The AFS struct.
+ * @param id The index of the entry
+ *
+ * @return A Timestamp struct that represents the last modified date.
+ */
+Timestamp getLastModifiedDate(Afs_t* afs, int id) {
+    return afs->meta[id].lastModified;
+}
+
+/** Converts a Timestamp struct to a string.
+ *
+ * @param t The Timestamp to be converted.
  * @return C-Style string containing the date.
  */
-char* getLastModifiedDate(AfsEntryMetadata* meta) {
-    char* out = calloc(1, 32);
-    sprintf(out, "%02d.%02d.%4d %02d:%02d:%02d", meta->lastModified.day, meta->lastModified.month, meta->lastModified.year, meta->lastModified.hours, meta->lastModified.minutes, meta->lastModified.seconds);
+char* timestampToString(Timestamp t) {
+    char* out = calloc(1, 40);
+    sprintf(out, "%.02d.%.02d.%.04d %.02d:%.02d:%.02d", t.day, t.month, t.year, t.hours, t.minutes, t.seconds);
     return out;
 }
 
