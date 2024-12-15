@@ -23,14 +23,14 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    // If they are, we create the AFS handle using openAfs()...
-    Afs_t* afs = openAfs(argv[1]);
+    // If they are, we create the AFS handle using afs_open()...
+    Afs* afs = afs_open(argv[1]);
     if(afs == NULL) {
         puts("ERROR: main - AFS file couldn't be created.");
         return 1;
     }
-    // ...and the AFL handle using openAfl().
-    Afl_t* afl = openAfl(argv[2]);
+    // ...and the AFL handle using afl_open().
+    Afl* afl = afl_open(argv[2]);
     if(afl == NULL) {
         puts("ERROR: main - AFL file couldn't be created.");
         return 2;
@@ -40,10 +40,10 @@ int main(int argc, char** argv) {
 
     // Unlike extract_afs.c, here, we pass true to the function
     // in order to write the names into the AFS file permanently.
-    importAfl(afs, afl, true);
+    afs_importAfl(afs, afl, true);
 
     // And of course, we free both of these handles after usage.
-    freeAfl(afl);
-    freeAfs(afs);
+    afl_free(afl);
+    afs_free(afs);
     return 0;
 }

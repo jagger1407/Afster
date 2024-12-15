@@ -29,16 +29,16 @@ int main(int argc, char** argv) {
 
     // Now that we know all arguments are there,
     // we can create an AFS Handle with the first argument
-    // using the openAfs() function.
-    Afs_t* afs = openAfs(argv[1]);
+    // using the afs_open() function.
+    Afs* afs = afs_open(argv[1]);
     if(afs == NULL) {
         puts("ERROR: main - AFS file couldn't be created.");
         return 1;
     }
 
     if(*argv[2] != 'n') {
-        // In case it is wanted, we create an AFL Handle using openAfl()
-        Afl_t* afl = openAfl(argv[2]);
+        // In case it is wanted, we create an AFL Handle using afl_open()
+        Afl* afl = afl_open(argv[2]);
         if(afl == NULL) {
             puts("ERROR: main - AFL file couldn't be created.");
             return 2;
@@ -46,25 +46,25 @@ int main(int argc, char** argv) {
         // Then we import the AFL list into the metadata section of the AFS,
         // but since we pass false here, the actual AFS File isn't updated,
         // it is only imported in-memory.
-        importAfl(afs, afl, false);
+        afs_importAfl(afs, afl, false);
 
         // Lastly, to ensure there is no memory leak,
         // we free the AFL since we aren't using it anymore.
-        freeAfl(afl);
+        afl_free(afl);
     }
 
     // Now we check the validity of the output folder.
     if(argv[3] == NULL || *argv[3] == 0x00) {
         puts("ERROR: main - Output folder doesn't exist or is invalid");
         printf("Output folder: %s\n", argv[3]);
-        freeAfs(afs);
+        afs_free(afs);
         return 3;
     }
 
     // And this one function call here fully extracts the entire AFS File.
-    extractWholeAfs(afs, argv[3]);
+    afs_extractFull(afs, argv[3]);
 
     // Lastly we make sure that no memory leaks occur by freeing all AFS related memory.
-    freeAfs(afs);
+    afs_free(afs);
     return 0;
 }

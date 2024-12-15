@@ -1,17 +1,17 @@
 #include "afl.h"
 
-Afl_t* openAfl(const char* aflPath) {
+Afl* afl_open(const char* aflPath) {
     if(aflPath == nullptr || *aflPath == '\0') {
         return NULL;
     }
     FILE* fp = fopen(aflPath, "rb");
 
     if(fp == NULL) {
-        puts("ERROR Afl::openAfl - AFL Filepath invalid.");
+        puts("ERROR: afl_open - AFL Filepath invalid.");
         printf("Filepath: %s\n", aflPath);
         return NULL;
     }
-    Afl_t* afl = (Afl_t*)malloc(sizeof(Afl_t));
+    Afl* afl = (Afl*)malloc(sizeof(Afl));
     afl->fstream = fp;
 
     fread(&afl->head, 0x10, 1, afl->fstream);
@@ -24,12 +24,22 @@ Afl_t* openAfl(const char* aflPath) {
     return afl;
 }
 
-char* getAflName(Afl_t* afl, int id) {
-    return AFL_NAME(afl, id);
+char* afl_getName(Afl* afl, int id) {
+    if(id < 0 || id >= afl->head.filecount) {
+        puts("ERROR: afl_getName - Entry ID out of range.");
+        printf("Entry ID: %d\tAFL Entry Count: %d\n", id, afl->head.filecount);
+        return NULL;
+    }
+    return _AFL_NAME(afl, id);
 }
 
-void freeAfl(Afl_t* afl) {
+void afl_free(Afl* afl) {
+    if(afl == NULL) {
+        puts("WARNING: afl_free - afl pointer already freed. Returning.");
+        return;
+    }
     fclose(afl->fstream);
     free(afl->filenames);
     free(afl);
+    afl = NULL;
 }

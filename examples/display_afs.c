@@ -16,8 +16,8 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    // If it does, we create the handle using openAfs().
-    Afs_t* afs = openAfs(argv[1]);
+    // If it does, we create the handle using afs_open().
+    Afs* afs = afs_open(argv[1]);
     if(afs == NULL) {
         puts("ERROR: main - AFS file couldn't be created.");
         return 2;
@@ -65,11 +65,11 @@ int main(int argc, char** argv) {
         // And here we finally add the last modified date.
         // This one is using a proprietary format, so we'll be using
         // The getter and conversion functions within the library.
-        Timestamp t = getLastModifiedDate(afs, i);
-        char* lastMod = timestampToString(t);
+        Timestamp t = afs_getLastModifiedDate(afs, i);
+        char* lastMod = afs_timestampToString(t);
         strncpy(line+58, lastMod, 20);
         line[strlen(lastMod)+58] = ' ';
-        // I feel it's important to mention that because timestampToString()
+        // I feel it's important to mention that because afs_timestampToString()
         // returns a char* that was allocated in said function, it is necessary to
         // free it after usage in order to ensure memory safety.
         free(lastMod);
