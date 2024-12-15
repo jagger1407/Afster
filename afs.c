@@ -1,17 +1,17 @@
 #include "afs.h"
 
-Afs_t* openAfs(char* filePath) {
+Afs* afs_open(char* filePath) {
     if(filePath == NULL || *filePath == '\0') {
         return NULL;
     }
     FILE* fp = fopen(filePath, "rb+");
 
     if(fp == NULL) {
-        puts("ERROR Afs::openAfs - AFS Filepath invalid.");
+        puts("ERROR afs_open - AFS Filepath invalid.");
         printf("Filepath: %s\n", filePath);
         return NULL;
     }
-    Afs_t* afs = (Afs_t*)malloc(sizeof(Afs_t));
+    Afs* afs = (Afs*)malloc(sizeof(Afs));
     afs->fstream = fp;
 
     // Read AFS Header
@@ -31,27 +31,27 @@ Afs_t* openAfs(char* filePath) {
     return afs;
 }
 
-void importAfl(Afs_t* afs, Afl_t* afl, bool permament) {
+void afs_importAfl(Afs* afs, Afl* afl, bool permament) {
     if(afs == NULL) {
-        puts("ERROR: Afs::importAfl - afs null.");
+        puts("ERROR: afs_importAfl - afs null.");
         return;
     }
     if(afs->fstream == NULL) {
-        puts("ERROR: Afs::importAfl - afs exists, but afs->fstream doesn't.");
+        puts("ERROR: afs_importAfl - afs exists, but afs->fstream doesn't.");
         return;
     }
     if(afl == NULL) {
-        puts("ERROR: Afs::importAfl - afl null.");
+        puts("ERROR: afs_importAfl - afl null.");
         return;
     }
 
     if(afl->head.filecount != afs->header.entrycount) {
-        puts("WARNING: Afs::importAfl - AFS file count and AFL file count are mismatched.");
+        puts("WARNING: afs_importAfl - AFS file count and AFL file count are mismatched.");
         printf("AFS file count: %d\nAFL file count: %d\n", afs->header.entrycount, afl->head.filecount);
     }
 
     for(int i=0;i<afs->header.entrycount;i++) {
-        memcpy(afs->meta[i].filename, AFL_NAME(afl, i), AFSMETA_NAMEBUFFERSIZE);
+        memcpy(afs->meta[i].filename, _AFL_NAME(afl, i), AFSMETA_NAMEBUFFERSIZE);
     }
     if(permament) {
         AfsEntryInfo metaInfo = afs->header.entryinfo[afs->header.entrycount];
@@ -60,22 +60,27 @@ void importAfl(Afs_t* afs, Afl_t* afl, bool permament) {
     }
 }
 
-void freeAfs(Afs_t* afs) {
+void afs_free(Afs* afs) {
+    if(afs == NULL) {
+        puts("WARNING: afs_free - afs pointer already freed. Returning.");
+        return;
+    }
     free(afs->meta);
     free(afs->header.entryinfo);
     fclose(afs->fstream);
     free(afs);
+    afs = NULL;
 }
 
-void extractEntryToFile(Afs_t* afs, int id, const char* output_folderpath) {
+void afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
     if(afs == NULL || afs->fstream == NULL) {
-        puts("ERROR Afs::extractEntryToFile - Invalid AFS pointer (afs or afs->fstream).");
+        puts("ERROR afs_extractEntryToFile - Invalid AFS pointer (afs or afs->fstream).");
         return;
     }
 
     if(id < 0 || id > afs->header.entrycount) {
-        puts("ERROR Afs::extractEntryToFile - Invalid entry ID.");
-        printf("Entry ID: %d\tEntry Count: %d\n", id, afs->header.entrycount);
+        puts("ERROR afs_extractEntryToFile - Entry ID out of range.");
+        printf("Entry ID: %d\tAFS entry count: %d\n", id, afs->header.entrycount);
         return;
     }
 
@@ -84,7 +89,7 @@ void extractEntryToFile(Afs_t* afs, int id, const char* output_folderpath) {
     u8 buffer[size];
 
     if(output_folderpath == NULL || *output_folderpath == 0x00 ) {
-        puts("ERROR Afs::extractEntryToFile - output_folderpath invalid.");
+        puts("ERROR afs_extractEntryToFile - output_folderpath invalid.");
         return;
     }
 
@@ -103,7 +108,7 @@ void extractEntryToFile(Afs_t* afs, int id, const char* output_folderpath) {
     FILE* outfile = fopen(outpath, "wb");
 
     if(outfile == NULL) {
-        puts("ERROR Afs::extractEntryToFile - File pointer failed to create.");
+        puts("ERROR afs_extractEntryToFile - File pointer failed to create.");
         printf("outfile path: %s\n", outpath);
         return;
     }
@@ -115,15 +120,15 @@ void extractEntryToFile(Afs_t* afs, int id, const char* output_folderpath) {
     fclose(outfile);
 }
 
-u8* extractEntryToBuffer(Afs_t* afs, int id) {
+u8* afs_extractEntryToBuffer(Afs* afs, int id) {
     if(afs == NULL || afs->fstream == NULL) {
-        puts("ERROR Afs::extractEntryToBuffer - Invalid AFS pointer (afs or afs->fstream).");
+        puts("ERROR afs_extractEntryToBuffer - Invalid AFS pointer (afs or afs->fstream).");
         return NULL;
     }
 
     if(id < 0 || id > afs->header.entrycount) {
-        puts("ERROR Afs::extractEntryToBuffer - Invalid entry ID.");
-        printf("Entry ID: %d\tEntry Count: %d\n", id, afs->header.entrycount);
+        puts("ERROR afs_extractEntryToBuffer - Entry ID out of range.");
+        printf("Entry ID: %d\tAFS entry count: %d\n", id, afs->header.entrycount);
         return NULL;
     }
 
@@ -136,13 +141,13 @@ u8* extractEntryToBuffer(Afs_t* afs, int id) {
     return buffer;
 }
 
-void extractWholeAfs(Afs_t* afs, const char* output_folderpath) {
+void afs_extractFull(Afs* afs, const char* output_folderpath) {
     if(afs == NULL || afs->fstream == NULL) {
-        puts("ERROR Afs::extractWholeAfs - Invalid AFS File.");
+        puts("ERROR afs_extractFull - Invalid AFS File.");
         return;
     }
     if(output_folderpath == NULL || *output_folderpath == 0x00 ) {
-        puts("ERROR Afs::extractWholeAfs - output_folderpath invalid.");
+        puts("ERROR afs_extractFull - output_folderpath invalid.");
         return;
     }
 
@@ -196,7 +201,7 @@ void extractWholeAfs(Afs_t* afs, const char* output_folderpath) {
         u8* buffer = (u8*)malloc(info.size);
         FILE* fp = fopen(filepath, "wb");
         if(fp == NULL) {
-            puts("ERROR: Afs::extractWholeAfs - fp failed to open.");
+            puts("ERROR: afs_extractFull - fp failed to open.");
             printf("filepath: %s\n", filepath);
             continue;
         }
@@ -209,11 +214,17 @@ void extractWholeAfs(Afs_t* afs, const char* output_folderpath) {
     }
 }
 
-Timestamp getLastModifiedDate(Afs_t* afs, int id) {
+Timestamp afs_getLastModifiedDate(Afs* afs, int id) {
+    if(id < 0 || id >= afs->header.entrycount) {
+        puts("ERROR: afs_getLastModifiedDate - Entry ID out of range.");
+        printf("Entry ID: %d\tAFS entry count: %d\n", id, afs->header.entrycount);
+        Timestamp t = {};
+        return t;
+    }
     return afs->meta[id].lastModified;
 }
 
-char* timestampToString(Timestamp t) {
+char* afs_timestampToString(Timestamp t) {
     char* out = calloc(1, 32);
     sprintf(out, "%.2d.%.2d.%.4d %.2d:%.2d:%.2d", t.day, t.month, t.year, t.hours, t.minutes, t.seconds);
     return out;

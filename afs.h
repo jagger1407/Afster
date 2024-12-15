@@ -58,14 +58,14 @@ typedef struct {
     AfsEntryMetadata* meta;
     //AfsEntryInfo* sortedEntries;
     FILE* fstream;
-} Afs_t;
+} Afs;
 
 /** opens an AFS file and builds the handle for it.
  *
  * @param filePath path the the AFS file
  * @return Handle to the constructed AFS struct, NULL if it failed.
  */
-Afs_t* openAfs(char* filePath);
+Afs* afs_open(char* filePath);
 
 /** Imports an AFL Name List into the AFS.
  *
@@ -73,13 +73,13 @@ Afs_t* openAfs(char* filePath);
  * @param afl The AFL Name List
  * @param permanent If true, the function will overwrite the metadata in the AFS File itself as well.
  */
-void importAfl(Afs_t* afs, Afl_t* afl, bool permament);
+void afs_importAfl(Afs* afs, Afl* afl, bool permament);
 
 /** With construction comes destruction. This frees all AFS related memory.
  *
  * @param afs The AFS struct to be destroyed.
  */
-void freeAfs(Afs_t* afs);
+void afs_free(Afs* afs);
 
 /** Extracts a singular file from the AFS to the specified folder.
  *
@@ -87,7 +87,7 @@ void freeAfs(Afs_t* afs);
  * @param id The index of the extracted file
  * @param output_folderpath The path to the folder where the file should be extracted to.
  */
-void extractEntryToFile(Afs_t* afs, int id, const char* output_folderpath);
+void afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath);
 
 /** Extracts a singular file from the AFS to the specified folder.
  *
@@ -95,14 +95,14 @@ void extractEntryToFile(Afs_t* afs, int id, const char* output_folderpath);
  * @param id The index of the extracted file
  * @return A buffer containing the data of the entry.
  */
-u8* extractEntryToBuffer(Afs_t* afs, int id);
+u8* afs_extractEntryToBuffer(Afs* afs, int id);
 
 /** Extracts all files within the AFS into a specified folder.
  *
  * @param afs The AFS struct
  * @param output_folderpath The path to the folder where the AFS should be extracted to.
  */
-void extractWholeAfs(Afs_t* afs, const char* output_folderpath);
+void afs_extractFull(Afs* afs, const char* output_folderpath);
 
 /** Gets the last modified date of a specific entry in the AFS.
  *
@@ -111,7 +111,7 @@ void extractWholeAfs(Afs_t* afs, const char* output_folderpath);
  *
  * @return A Timestamp struct that represents the last modified date.
  */
-Timestamp getLastModifiedDate(Afs_t* afs, int id);
+Timestamp afs_getLastModifiedDate(Afs* afs, int id);
 
 /** Converts a Timestamp struct to a string.
  *  Note that a char* is allocated here, and must be manually freed.
@@ -119,6 +119,6 @@ Timestamp getLastModifiedDate(Afs_t* afs, int id);
  * @param t The Timestamp to be converted.
  * @return C-Style string containing the date.
  */
-char* timestampToString(Timestamp t);
+char* afs_timestampToString(Timestamp t);
 
 #endif // AFS_H_INCLUDED
