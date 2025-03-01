@@ -63,17 +63,9 @@ typedef struct {
 /** opens an AFS file and builds the handle for it.
  *
  * @param filePath path the the AFS file
- * @return Handle to the constructed AFS struct, NULL if it failed.
+ * @return Handle to the constructed AFS struct, or NULL if it failed.
  */
 Afs* afs_open(char* filePath);
-
-/** Imports an AFL Name List into the AFS.
- *
- * @param afs The AFS to be updated
- * @param afl The AFL Name List
- * @param permanent If true, the function will overwrite the metadata in the AFS File itself as well.
- */
-void afs_importAfl(Afs* afs, Afl* afl, bool permament);
 
 /** With construction comes destruction. This frees all AFS related memory.
  *
@@ -81,19 +73,29 @@ void afs_importAfl(Afs* afs, Afl* afl, bool permament);
  */
 void afs_free(Afs* afs);
 
-/** Extracts a singular file from the AFS to the specified folder.
+/** Imports an AFL Name List into the AFS.
  *
- * @param afs The AFS struct
- * @param id The index of the extracted file
- * @param output_folderpath The path to the folder where the file should be extracted to.
+ * @param afs The AFS to be updated
+ * @param afl The AFL Name List
+ * @param permanent If true, the function will overwrite the metadata in the AFS File itself as well.
+ * @return 0 if successful, 1 if AFS is invalid, 2 if AFL is invalid.
  */
-void afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath);
+int afs_importAfl(Afs* afs, Afl* afl, bool permament);
 
 /** Extracts a singular file from the AFS to the specified folder.
  *
  * @param afs The AFS struct
  * @param id The index of the extracted file
- * @return A buffer containing the data of the entry.
+ * @param output_folderpath The path to the folder where the file should be extracted to.
+ * @return 0 if successful, 1 if AFS is invalid, 2 if entry ID is out of range, 3 if output_folderpath is invalid or inaccessible.
+ */
+int afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath);
+
+/** Extracts a singular file from the AFS to the specified folder.
+ *
+ * @param afs The AFS struct
+ * @param id The index of the extracted file
+ * @return A buffer containing the data of the entry, or NULL if there was an error.
  */
 u8* afs_extractEntryToBuffer(Afs* afs, int id);
 
@@ -101,8 +103,9 @@ u8* afs_extractEntryToBuffer(Afs* afs, int id);
  *
  * @param afs The AFS struct
  * @param output_folderpath The path to the folder where the AFS should be extracted to.
+ * @return 0 if successful, 1 if AFS is invalid, 2 if output_folderpath is invalid.
  */
-void afs_extractFull(Afs* afs, const char* output_folderpath);
+int afs_extractFull(Afs* afs, const char* output_folderpath);
 
 /** Renames an entry of the AFS.
  *

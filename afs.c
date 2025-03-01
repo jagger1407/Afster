@@ -31,18 +31,30 @@ Afs* afs_open(char* filePath) {
     return afs;
 }
 
-void afs_importAfl(Afs* afs, Afl* afl, bool permament) {
+void afs_free(Afs* afs) {
+    if(afs == NULL) {
+        puts("WARNING: afs_free - afs pointer already freed. Returning.");
+        return;
+    }
+    free(afs->meta);
+    free(afs->header.entryinfo);
+    fclose(afs->fstream);
+    free(afs);
+    afs = NULL;
+}
+
+int afs_importAfl(Afs* afs, Afl* afl, bool permament) {
     if(afs == NULL) {
         puts("ERROR: afs_importAfl - afs null.");
-        return;
+        return 1;
     }
     if(afs->fstream == NULL) {
         puts("ERROR: afs_importAfl - afs exists, but afs->fstream doesn't.");
-        return;
+        return 1;
     }
     if(afl == NULL) {
         puts("ERROR: afs_importAfl - afl null.");
-        return;
+        return 2;
     }
 
     if(afl->head.filecount != afs->header.entrycount) {
@@ -58,30 +70,19 @@ void afs_importAfl(Afs* afs, Afl* afl, bool permament) {
         fseek(afs->fstream, metaInfo.offset, SEEK_SET);
         fwrite(afs->meta, metaInfo.size, 1, afs->fstream);
     }
+    return 0;
 }
 
-void afs_free(Afs* afs) {
-    if(afs == NULL) {
-        puts("WARNING: afs_free - afs pointer already freed. Returning.");
-        return;
-    }
-    free(afs->meta);
-    free(afs->header.entryinfo);
-    fclose(afs->fstream);
-    free(afs);
-    afs = NULL;
-}
-
-void afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
+int afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
     if(afs == NULL || afs->fstream == NULL) {
         puts("ERROR: afs_extractEntryToFile - Invalid AFS pointer (afs or afs->fstream).");
-        return;
+        return 1;
     }
 
     if(id < 0 || id > afs->header.entrycount) {
         puts("ERROR: afs_extractEntryToFile - Entry ID out of range.");
         printf("Entry ID: %d\tAFS entry count: %d\n", id, afs->header.entrycount);
-        return;
+        return 2;
     }
 
     int off = afs->header.entryinfo[id].offset;
@@ -90,7 +91,7 @@ void afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
 
     if(output_folderpath == NULL || *output_folderpath == 0x00 ) {
         puts("ERROR: afs_extractEntryToFile - output_folderpath invalid.");
-        return;
+        return 3;
     }
 
     char outpath[strlen(output_folderpath)+AFSMETA_NAMEBUFFERSIZE];
@@ -110,7 +111,7 @@ void afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
     if(outfile == NULL) {
         puts("ERROR: afs_extractEntryToFile - File pointer failed to create.");
         printf("outfile path: %s\n", outpath);
-        return;
+        return 3;
     }
 
     fseek(afs->fstream, off, SEEK_SET);
@@ -118,6 +119,8 @@ void afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
     fwrite(buffer, 1, size, outfile);
 
     fclose(outfile);
+
+    return 0;
 }
 
 u8* afs_extractEntryToBuffer(Afs* afs, int id) {
@@ -141,14 +144,14 @@ u8* afs_extractEntryToBuffer(Afs* afs, int id) {
     return buffer;
 }
 
-void afs_extractFull(Afs* afs, const char* output_folderpath) {
+int afs_extractFull(Afs* afs, const char* output_folderpath) {
     if(afs == NULL || afs->fstream == NULL) {
         puts("ERROR: afs_extractFull - Invalid AFS File.");
-        return;
+        return 1;
     }
     if(output_folderpath == NULL || *output_folderpath == 0x00 ) {
         puts("ERROR: afs_extractFull - output_folderpath invalid.");
-        return;
+        return 2;
     }
 
     // In order to ensure each file path will be concatenated correctly,
@@ -212,6 +215,7 @@ void afs_extractFull(Afs* afs, const char* output_folderpath) {
 
         fclose(fp);
     }
+    return 0;
 }
 
 int afs_renameEntry(Afs* afs, int id, const char* new_name, bool permanent) {

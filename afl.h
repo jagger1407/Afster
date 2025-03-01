@@ -36,7 +36,7 @@ Afl* afl_open(const char* aflPath);
  *
  * @param afl path the the AFL file
  * @param id index of the file
- * @return char pointer to the name of the file.
+ * @return char pointer to the name of the file, or NULL if the ID is out of range.
  */
 char* afl_getName(Afl* afl, int id);
 
