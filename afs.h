@@ -104,6 +104,16 @@ u8* afs_extractEntryToBuffer(Afs* afs, int id);
  */
 void afs_extractFull(Afs* afs, const char* output_folderpath);
 
+/** Renames an entry of the AFS.
+ *
+ * @param afs The AFS struct
+ * @param id The index of the entry
+ * @param new_name The new name for the entry
+ * @param permanent If true, the function will overwrite the metadata in the AFS File itself as well.
+ * @return 0 if successful, 1 if AFS is invalid, 2 if entry ID is out of range, 3 if new_name is invalid.
+ */
+int afs_renameEntry(Afs* afs, int id, const char* new_name, bool permanent);
+
 /** Gets the last modified date of a specific entry in the AFS.
  *
  * @param afs The AFS struct.
