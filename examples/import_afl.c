@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../afs.h"
+#include "../afl.h"
 
 /*
  * This is an example program used to demonstrate how one can use this library.
@@ -40,7 +41,7 @@ int main(int argc, char** argv) {
 
     // Unlike extract_afs.c, here, we pass true to the function
     // in order to write the names into the AFS file permanently.
-    afs_importAfl(afs, afl, true);
+    afl_importAfl(afl, afs, true);
 
     // And of course, we free both of these handles after usage.
     afl_free(afl);
