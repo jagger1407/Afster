@@ -215,6 +215,45 @@ int afs_renameEntry(Afs* afs, int id, const char* new_name, bool permanent) {
     return 0;
 }
 
+AfsEntryMetadata afs_getEntryMetadata(Afs* afs, int id) {
+    AfsEntryMetadata out = {};
+
+    if(afs == NULL || afs->fstream == NULL) {
+        puts("ERROR: afs_getEntryMetadata - Invalid AFS File.");
+        return out;
+    }
+    if(id < 0 || id >= afs->header.entrycount) {
+        puts("ERROR: afs_getEntryMetadata - Entry ID out of range.");
+        printf("Entry ID: %d, AFS Entry Count: %d\n", id, afs->header.entrycount);
+        return out;
+    }
+
+    memcpy(&out, &(afs->meta[id]), sizeof(AfsEntryMetadata));
+
+    return out;
+}
+
+int afs_setEntryMetadata(Afs* afs, int id, AfsEntryMetadata new_meta, bool permanent) {
+    if(afs == NULL || afs->fstream == NULL) {
+        puts("ERROR: afs_setEntryMetadata - Invalid AFS File.");
+        return 1;
+    }
+    if(id < 0 || id >= afs->header.entrycount) {
+        puts("ERROR: afs_setEntryMetadata - Entry ID out of range.");
+        printf("Entry ID: %d, AFS Entry Count: %d\n", id, afs->header.entrycount);
+        return 2;
+    }
+    memcpy(&(afs->meta[id]), &new_meta, sizeof(AfsEntryMetadata));
+
+    if(permanent) {
+        fseek(afs->fstream, afs->header.entryinfo[afs->header.entrycount].offset + (id * sizeof(AfsEntryMetadata)), SEEK_SET);
+        fwrite(&new_meta, sizeof(AfsEntryMetadata), 1, afs->fstream);
+        fseek(afs->fstream, 0, SEEK_SET);
+    }
+
+    return 0;
+}
+
 Timestamp afs_getLastModifiedDate(Afs* afs, int id) {
     if(id < 0 || id >= afs->header.entrycount) {
         puts("ERROR: afs_getLastModifiedDate - Entry ID out of range.");
