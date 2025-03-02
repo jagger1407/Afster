@@ -1,0 +1,7 @@
+*.txt
+*.afs
+*.AFS
+
+Afster.kdev4
+CMakeLists.txt
+build/
