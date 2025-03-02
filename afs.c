@@ -188,6 +188,120 @@ int afs_extractFull(Afs* afs, const char* output_folderpath) {
     return 0;
 }
 
+int _afs_replaceEntry_noResize(Afs* afs, int id, u8* data, int data_size) {
+    if(afs == NULL || afs->fstream == NULL) {
+        return 1;
+    }
+    if(id < 0 || id >= afs->header.entrycount) {
+        return 2;
+    }
+    if(data == NULL || data_size <= 0) {
+        return 3;
+    }
+
+    int reservedSpace = afs->header.entryinfo[id+1].offset - afs->header.entryinfo[id].offset;
+
+    u8 newData[reservedSpace];
+    memset(newData, 0x00, reservedSpace);
+    memcpy(newData, data, data_size);
+
+    fseek(afs->fstream, afs->header.entryinfo[id].offset, SEEK_SET);
+    fwrite(newData, 1, reservedSpace, afs->fstream);
+    int entryinfoOffset = 8 + (sizeof(AfsEntryInfo) * id); // 8 = sizeof(identifier) + sizeof(entrycount)
+    fseek(afs->fstream, entryinfoOffset, SEEK_SET);
+    afs->header.entryinfo[id].size = data_size;
+    fwrite(afs->header.entryinfo + id, sizeof(AfsEntryInfo), 1, afs->fstream);
+
+    fseek(afs->fstream, 0, SEEK_SET);
+    return 0;
+}
+
+int _afs_resizeEntrySpace(Afs* afs, int id, int new_size) {
+    if(afs == NULL || afs->fstream == NULL) {
+        return 1;
+    }
+    if(id < 0 || id >= afs->header.entrycount) {
+        return 2;
+    }
+    if(AFS_RESERVEDSPACEBUFFER % 0x10 != 0) {
+        return 3;
+    }
+
+    int oldSize = afs->header.entryinfo[id].size;
+    afs->header.entryinfo[id].size = new_size;
+
+    int newReservedSpace = (new_size / AFS_RESERVEDSPACEBUFFER + 1) * AFS_RESERVEDSPACEBUFFER;
+    u8 buffer[newReservedSpace];
+    memset(buffer, 0x00, newReservedSpace);
+
+    // This variable is the starting offset for the back half of the AFS
+    int oldOffsetNextEntry = afs->header.entryinfo[id+1].offset;
+
+    // This loop updates each element in the entryinfo array with their new offsets.
+    int curOffset = afs->header.entryinfo[id].offset + newReservedSpace;
+    for(int i=id + 1; i < afs->header.entrycount; i++) {
+        int reserved = afs->header.entryinfo[i+1].offset - afs->header.entryinfo[i].offset;
+        afs->header.entryinfo[i].offset = curOffset;
+        curOffset += reserved;
+    }
+    // Metadata
+    afs->header.entryinfo[afs->header.entrycount].offset = curOffset;
+
+    // Consider the AFS as one long line of data.
+    // This is splitting the AFS exactly where the entry is,
+    // Creating a Front part and a back part.
+
+    // This is the size of that back part
+    fseek(afs->fstream, oldOffsetNextEntry, SEEK_SET);
+    int backSize = ftell(afs->fstream);
+    fseek(afs->fstream, 0, SEEK_END);
+    backSize = ftell(afs->fstream) - backSize;
+
+    // This here reads the back part into a buffer
+    u8 back[backSize];
+    fseek(afs->fstream, oldOffsetNextEntry, SEEK_SET);;
+    fread(back, 1, backSize, afs->fstream);
+
+    // This here writes the new space to the file
+    fseek(afs->fstream, afs->header.entryinfo[id].offset, SEEK_SET);
+    fwrite(buffer, 1, newReservedSpace, afs->fstream);
+    // This here writes the back part to the file
+    fwrite(back, 1, backSize, afs->fstream);
+
+    // This here writes the new entry info into the header.
+    fseek(afs->fstream, 8, SEEK_SET);
+    fwrite(afs->header.entryinfo, sizeof(AfsEntryInfo), afs->header.entrycount + 1, afs->fstream);
+
+    return 0;
+}
+
+int afs_replaceEntry(Afs* afs, int id, u8* data, int data_size) {
+    if(afs == NULL || afs->fstream == NULL) {
+        puts("ERROR: afs_replaceEntry - Invalid AFS File.");
+        return 1;
+    }
+    if(id < 0 || id >= afs->header.entrycount) {
+        puts("ERROR: afs_replaceEntry - Entry ID out of range.");
+        printf("Entry ID: %d, AFS Entry Count: %d\n", id, afs->header.entrycount);
+        return 2;
+    }
+    if(data == NULL || data_size <= 0) {
+        puts("ERROR: afs_replaceEntry - Given data is invalid (NULL or zero size).");
+        printf("data: 0x%08x\tdata_size: %d", data, data_size);
+        return 3;
+    }
+
+    int reservedSpace = afs->header.entryinfo[id+1].offset - afs->header.entryinfo[id].offset;
+
+    if(data_size >= reservedSpace) {
+        _afs_resizeEntrySpace(afs, id, data_size);
+    }
+    _afs_replaceEntry_noResize(afs, id, data, data_size);
+
+    return 0;
+}
+
+
 int afs_renameEntry(Afs* afs, int id, const char* new_name, bool permanent) {
     if(afs == NULL || afs->fstream == NULL) {
         puts("ERROR: afs_renameEntry - Invalid AFS File.");
