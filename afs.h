@@ -107,6 +107,22 @@ int afs_extractFull(Afs* afs, const char* output_folderpath);
  */
 int afs_renameEntry(Afs* afs, int id, const char* new_name, bool permanent);
 
+/** Gets the metadata of a given entry.
+ * @param afs The AFS struct
+ * @param id The index of the entry
+ * @return A copy of the AfsEntryMetaData struct of the entry, or an empty one if the ID is invalid.
+ */
+AfsEntryMetadata afs_getEntryMetadata(Afs* afs, int id);
+
+/** Sets the metadata of a given entry.
+ * @param afs The AFS struct
+ * @param id The index of the entry
+ * @param new_meta Metadata that will replace the current one
+ * @param permanent If true, the function will overwrite the metadata in the AFS File itself as well.
+ * @return 0 if successful, 1 if AFS is invalid, 2 if entry ID is out of range
+ */
+int afs_setEntryMetadata(Afs* afs, int id, AfsEntryMetadata new_meta, bool permanent);
+
 /** Gets the last modified date of a specific entry in the AFS.
  *
  * @param afs The AFS struct.
