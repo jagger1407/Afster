@@ -3,6 +3,16 @@
 #include "../afl.h"
 #include "../afs.h"
 
+char* strlwr(char* str) {
+    char* curChar = str;
+    while(*curChar) {
+        if(*curChar >= 'A' && *curChar <= 'Z')
+            *curChar += 0x20;
+        curChar++;
+    }
+    return str;
+}
+
 /** Prints a help text explaining how to use this program
  */
 void printHelp() {
@@ -43,7 +53,9 @@ int main(int argc, char** argv) {
     }
     // Checking whether the given path points to an AFS File
     int len = strlen(argv[1]);
-    if(strcmp(strlwr(argv[1]) + len - 4, ".afs") != 0) {
+    char afspath[len];
+    strcpy(afspath, argv[1]);
+    if(strcmp(strlwr(afspath) + len - 4, ".afs") != 0) {
         puts("ERROR: main - arg1 is not an AFS File.");
         printHelp();
         return 1;
