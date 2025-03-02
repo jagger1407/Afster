@@ -5,8 +5,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "afs.h"
 
-#define AFL_NAMEBUFFERSIZE 0x20
+#define AFL_NAMEBUFFERSIZE AFSMETA_NAMEBUFFERSIZE
 
 #define _AFL_NAME(afl, x) (afl->filenames + (x * AFL_NAMEBUFFERSIZE))
 
@@ -44,5 +45,14 @@ char* afl_getName(Afl* afl, int id);
  * @param afl The AFL struct.
  */
 void afl_free(Afl* afl);
+
+/** Imports an AFL Name List into the AFS.
+ *
+ * @param afs The AFS to be updated
+ * @param afl The AFL Name List
+ * @param permanent If true, the function will overwrite the metadata in the AFS File itself as well.
+ * @return 0 if successful, 1 if AFS is invalid, 2 if AFL is invalid.
+ */
+int afl_importAfl(Afl* afl, Afs* afs, bool permament);
 
 #endif // AFL_H_INCLUDED

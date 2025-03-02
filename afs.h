@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "types.h"
-#include "afl.h"
 
 #ifdef _WIN32
 
@@ -72,15 +71,6 @@ Afs* afs_open(char* filePath);
  * @param afs The AFS struct to be destroyed.
  */
 void afs_free(Afs* afs);
-
-/** Imports an AFL Name List into the AFS.
- *
- * @param afs The AFS to be updated
- * @param afl The AFL Name List
- * @param permanent If true, the function will overwrite the metadata in the AFS File itself as well.
- * @return 0 if successful, 1 if AFS is invalid, 2 if AFL is invalid.
- */
-int afs_importAfl(Afs* afs, Afl* afl, bool permament);
 
 /** Extracts a singular file from the AFS to the specified folder.
  *
