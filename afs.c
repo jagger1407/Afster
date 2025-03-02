@@ -217,6 +217,7 @@ int _afs_replaceEntry_noResize(Afs* afs, int id, u8* data, int data_size) {
     fwrite(afs->meta + id, sizeof(AfsEntryMetadata), 1, afs->fstream);
 
     fseek(afs->fstream, 0, SEEK_SET);
+    free(newData);
     return 0;
 }
 
