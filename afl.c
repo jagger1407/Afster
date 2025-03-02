@@ -46,20 +46,20 @@ void afl_free(Afl* afl) {
 
 int afl_importAfl(Afl* afl, Afs* afs, bool permament) {
     if(afs == NULL) {
-        puts("ERROR: afs_importAfl - afs null.");
+        puts("ERROR: afl_importAfl - afs null.");
         return 1;
     }
     if(afs->fstream == NULL) {
-        puts("ERROR: afs_importAfl - afs exists, but afs->fstream doesn't.");
+        puts("ERROR: afl_importAfl - afs exists, but afs->fstream doesn't.");
         return 1;
     }
     if(afl == NULL) {
-        puts("ERROR: afs_importAfl - afl null.");
+        puts("ERROR: afl_importAfl - afl null.");
         return 2;
     }
 
     if(afl->head.filecount != afs->header.entrycount) {
-        puts("WARNING: afs_importAfl - AFS file count and AFL file count are mismatched.");
+        puts("WARNING: afl_importAfl - AFS file count and AFL file count are mismatched.");
         printf("AFS file count: %d\nAFL file count: %d\n", afs->header.entrycount, afl->head.filecount);
     }
 
