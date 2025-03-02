@@ -53,7 +53,7 @@ typedef struct {
 typedef struct {
     char filename[AFSMETA_NAMEBUFFERSIZE];
     Timestamp lastModified;
-    u32 unknown;    // I genuinely have no idea, maybe unused
+    u32 filesize;    // Seems to verify the file size? Not sure about this one
 }AfsEntryMetadata;
 
 typedef struct {

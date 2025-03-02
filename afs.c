@@ -201,7 +201,7 @@ int _afs_replaceEntry_noResize(Afs* afs, int id, u8* data, int data_size) {
 
     int reservedSpace = afs->header.entryinfo[id+1].offset - afs->header.entryinfo[id].offset;
 
-    u8 newData[reservedSpace];
+    u8* newData = (u8*)malloc(reservedSpace);
     memset(newData, 0x00, reservedSpace);
     memcpy(newData, data, data_size);
 
@@ -211,6 +211,10 @@ int _afs_replaceEntry_noResize(Afs* afs, int id, u8* data, int data_size) {
     fseek(afs->fstream, entryinfoOffset, SEEK_SET);
     afs->header.entryinfo[id].size = data_size;
     fwrite(afs->header.entryinfo + id, sizeof(AfsEntryInfo), 1, afs->fstream);
+
+    afs->meta[id].filesize = data_size;
+    fseek(afs->fstream, afs->header.entryinfo[afs->header.entrycount].offset + sizeof(AfsEntryMetadata) * id, SEEK_SET);
+    fwrite(afs->meta + id, sizeof(AfsEntryMetadata), 1, afs->fstream);
 
     fseek(afs->fstream, 0, SEEK_SET);
     return 0;
@@ -231,7 +235,7 @@ int _afs_resizeEntrySpace(Afs* afs, int id, int new_size) {
     afs->header.entryinfo[id].size = new_size;
 
     int newReservedSpace = (new_size / AFS_RESERVEDSPACEBUFFER + 1) * AFS_RESERVEDSPACEBUFFER;
-    u8 buffer[newReservedSpace];
+    u8* buffer = (u8*)malloc(newReservedSpace);
     memset(buffer, 0x00, newReservedSpace);
 
     // This variable is the starting offset for the back half of the AFS
@@ -258,7 +262,7 @@ int _afs_resizeEntrySpace(Afs* afs, int id, int new_size) {
     backSize = ftell(afs->fstream) - backSize;
 
     // This here reads the back part into a buffer
-    u8 back[backSize];
+    u8* back = (u8*)malloc(backSize);
     fseek(afs->fstream, oldOffsetNextEntry, SEEK_SET);;
     fread(back, 1, backSize, afs->fstream);
 
@@ -272,8 +276,11 @@ int _afs_resizeEntrySpace(Afs* afs, int id, int new_size) {
     fseek(afs->fstream, 8, SEEK_SET);
     fwrite(afs->header.entryinfo, sizeof(AfsEntryInfo), afs->header.entrycount + 1, afs->fstream);
 
+    free(back);
+    free(buffer);
     return 0;
 }
+
 
 int afs_replaceEntry(Afs* afs, int id, u8* data, int data_size) {
     if(afs == NULL || afs->fstream == NULL) {
