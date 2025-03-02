@@ -27,7 +27,7 @@ Currently, the library is able to:
 - [x] Extract single entries
 - [ ] Extract multiple entries
 - [x] Extract the whole AFS
-- [ ] Change the offset of an entry
+- [ ] Change the offset of an entry (do we really need this?)
 - [ ] Change the size of an entry
 - [ ] Insert/Append an entry
-- [ ] Replace an entry
+- [x] Replace an entry
