@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "../afl.h"
 #include "../afs.h"
 
 /*
@@ -46,7 +47,7 @@ int main(int argc, char** argv) {
         // Then we import the AFL list into the metadata section of the AFS,
         // but since we pass false here, the actual AFS File isn't updated,
         // it is only imported in-memory.
-        afs_importAfl(afs, afl, false);
+        afl_importAfl(afl, afs, false);
 
         // Lastly, to ensure there is no memory leak,
         // we free the AFL since we aren't using it anymore.
