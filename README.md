@@ -23,7 +23,7 @@ Currently, the library is able to:
     - [x] Last Modified date (Metadata)
 - [x] Import AFL File
 - [x] Rename entry
-- [ ] Change Metadata of an entry
+- [x] Change Metadata of an entry
 - [x] Extract single entries
 - [ ] Extract multiple entries
 - [x] Extract the whole AFS
