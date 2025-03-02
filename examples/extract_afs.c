@@ -3,6 +3,16 @@
 #include "../afl.h"
 #include "../afs.h"
 
+/** Prints a help text explaining how to use this program
+ */
+void printHelp() {
+    puts("extract - Extract all entries within an AFS.\n");
+    puts("arg1 = A path to an AFS file");
+    puts("arg2 = Either a path to an AFL file, or the letter 'n' in case no AFL is wanted");
+    puts("arg3 = The index of a singular entry to extract, or the letter 'n' in case all files should be extracted");
+    puts("arg4 = A path to an output folder where all entries are to be stored");
+}
+
 /*
  * This is an example program used to demonstrate how one can use this library.
  * In this case, we extract the entire AFS File into a folder.
@@ -12,11 +22,11 @@
  * arg2 = Either a path to an AFL file or the letter 'n' in case no AFL is wanted
  * arg3 = A path to an output folder where all entries are to be stored
 */
-
 int main(int argc, char** argv) {
     // Checking if all arguments are present
     if(argc < 2) {
         puts("ERROR: main - No AFS file specified.");
+        printHelp();
         return 1;
     }
     else if(argc < 3) {
@@ -24,8 +34,19 @@ int main(int argc, char** argv) {
         return 2;
     }
     else if(argc < 4) {
-        puts("ERROR: main - No output path specified.");
+        puts("ERROR: main - No entry selection specified.");
         return 3;
+    }
+    else if(argc < 5) {
+        puts("ERROR: main - No output folder specified.");
+        return 4;
+    }
+    // Checking whether the given path points to an AFS File
+    int len = strlen(argv[1]);
+    if(strcmp(strlwr(argv[1]) + len - 4, ".afs") != 0) {
+        puts("ERROR: main - arg1 is not an AFS File.");
+        printHelp();
+        return 1;
     }
 
     // Now that we know all arguments are there,
@@ -55,15 +76,30 @@ int main(int argc, char** argv) {
     }
 
     // Now we check the validity of the output folder.
-    if(argv[3] == NULL || *argv[3] == 0x00) {
+    if(argv[4] == NULL || *argv[4] == 0x00) {
         puts("ERROR: main - Output folder doesn't exist or is invalid");
         printf("Output folder: %s\n", argv[3]);
         afs_free(afs);
         return 3;
     }
 
-    // And this one function call here fully extracts the entire AFS File.
-    afs_extractFull(afs, argv[3]);
+    // We check which option the user has given us
+    if(*argv[3] == 'n') {
+        // This one function call here fully extracts the entire AFS File.
+        int ret = afs_extractFull(afs, argv[4]);
+        if(ret != 0) {
+            return ret;
+        }
+    }
+    else {
+        // If we only want to extract a single Entry,
+        int entryId = atoi(argv[3]);
+        // ...this function extracts the selected Entry to the folder
+        int ret = afs_extractEntryToFile(afs, entryId, argv[4]);
+        if(ret != 0) {
+            return ret;
+        }
+    }
 
     // Lastly we make sure that no memory leaks occur by freeing all AFS related memory.
     afs_free(afs);

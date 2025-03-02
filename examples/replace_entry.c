@@ -3,6 +3,15 @@
 #include <time.h>
 #include "../afs.h"
 
+/** Prints a help text explaining how to use this program
+ */
+void printHelp() {
+    puts("replace - Replace one singular entry from an AFS File.\n");
+    puts("arg1 = A path to an AFS file");
+    puts("arg2 = The index of the entry that we're replacing");
+    puts("arg3 = A path to the file we're putting in");
+}
+
 /*
  * This is an example program used to demonstrate how one can use this library.
  * In this case, we replace one singular entry within the AFS.
@@ -12,11 +21,11 @@
  * arg2 = The index of the entry that we're replacing
  * arg3 = A path to the file we're putting in
 */
-
 int main(int argc, char** argv) {
     // Checking if all arguments are present
     if(argc < 2) {
         puts("ERROR: main - No AFS file specified.");
+        printHelp();
         return 1;
     }
     else if(argc < 3) {
@@ -26,6 +35,16 @@ int main(int argc, char** argv) {
     else if(argc < 4) {
         puts("ERROR: main - No replacement file specified.");
         return 3;
+    }
+    // Checking if arg1 contains a path to an AFS File
+    // We take the length of the given filepath
+    int len = strlen(argv[1]);
+    // strlwr turns the string into all lowercase,
+    // then we strcmp the last 4 letters to be ".afs"
+    if(strcmp(strlwr(argv[1]) + len - 4, ".afs") != 0) {
+        puts("ERROR: main - arg1 is not an AFS File.");
+        printHelp();
+        return 1;
     }
     // Checking if arg3 contains a valid string
     if(argv[3] == NULL || *argv[3] == 0x00) {

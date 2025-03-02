@@ -3,16 +3,33 @@
 #include <string.h>
 #include "../afs.h"
 
+/** Prints a help text explaining how to use this program
+ */
+void printHelp() {
+    puts("display - Display all the entires within the AFS.\n");
+    puts("arg1 = A path to an AFS file");
+}
+
 /*
  * This is an example program used to demonstrate how one can use this library.
  * In this case, we take as an argument a path to an AFS file, and display
  * all of its contents inside of a table.
 */
-
 int main(int argc, char** argv) {
     // We first check whether the AFS argument even exists.
     if(argc < 2) {
         puts("ERROR: main - No AFS file specified.");
+        printHelp();
+        return 1;
+    }
+    // We then check whether this argument links to an AFS file
+    // We take the length of the given filepath
+    int len = strlen(argv[1]);
+    // strlwr turns the string into all lowercase,
+    // then we strcmp the last 4 letters to be ".afs"
+    if(strcmp(strlwr(argv[1]) + len - 4, ".afs") != 0) {
+        puts("ERROR: main - arg1 is not an AFS File.");
+        printHelp();
         return 1;
     }
 
