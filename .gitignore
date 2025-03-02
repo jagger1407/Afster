@@ -1,6 +1,8 @@
 *.txt
 *.afs
 *.AFS
+*.exe
+*.o
 
 Afster.kdev4
 CMakeLists.txt
