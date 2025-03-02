@@ -45,6 +45,10 @@ typedef struct {
 } AfsHeader;
 
 #define AFSMETA_NAMEBUFFERSIZE 0x20
+/** Size of the buffer from one entry to the next.
+ * @note IMPORTANT!!! Must be 16-Byte aligned.
+ */
+#define AFS_RESERVEDSPACEBUFFER 2048
 
 typedef struct {
     char filename[AFSMETA_NAMEBUFFERSIZE];
@@ -96,6 +100,38 @@ u8* afs_extractEntryToBuffer(Afs* afs, int id);
  * @return 0 if successful, 1 if AFS is invalid, 2 if output_folderpath is invalid.
  */
 int afs_extractFull(Afs* afs, const char* output_folderpath);
+
+/** Replaces an entry within the AFS without resizing
+ * @note DESIGNED FOR INTERNAL USE ONLY
+ *
+ * @param afs The AFS struct
+ * @param id The index of the entry
+ * @param data Byte Array containing the new entry data
+ * @param data_size Size of the data
+ * @return 0 if successful, 1 if AFS is invalid, 2 if entry ID is out of range, 3 if data array is invalid (NULL or zero size).
+ */
+int _afs_replaceEntry_noResize(Afs* afs, int id, u8* data, int data_size);
+
+/** Clears and resizes the reserved space for the specified entry.
+ * This will change each offset for following entries!
+ * @note DESIGNED FOR INTERNAL USE ONLY
+ *
+ * @param afs The AFS struct
+ * @param id The index of the entry
+ * @param new_size new reserved space for the entry, will be expanded to be 16-Byte aligned.
+ * @return 0 if successful, 1 if AFS is invalid, 2 if entry ID is out of range, 3 if AFS_RESERVEDSPACEBUFFER isn't 16-Byte aligned.
+ */
+int _afs_resizeEntrySpace(Afs* afs, int id, int new_size);
+
+/** Replaces an entry within the AFS.
+ *
+ * @param afs The AFS struct
+ * @param id The index of the entry
+ * @param data Byte Array containing the new entry data
+ * @param data_size Size of the data
+ * @return 0 if successful, 1 if AFS is invalid, 2 if entry ID is out of range, 3 if data array is invalid (NULL or zero size), 4 if resizing was necessary but failed.
+ */
+int afs_replaceEntry(Afs* afs, int id, u8* data, int data_size);
 
 /** Renames an entry of the AFS.
  *
