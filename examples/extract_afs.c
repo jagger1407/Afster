@@ -102,15 +102,17 @@ int main(int argc, char** argv) {
         if(ret != 0) {
             return ret;
         }
+        printf("AFS extracted to %s.", argv[4]);
     }
     else {
         // If we only want to extract a single Entry,
         int entryId = atoi(argv[3]);
         // ...this function extracts the selected Entry to the folder
-        int ret = afs_extractEntryToFile(afs, entryId, argv[4]);
-        if(ret != 0) {
-            return ret;
-        }
+        char* outfile = afs_extractEntryToFile(afs, entryId, argv[4]);
+        // the function returns the filepath to the extracted entry,
+        // so we can just use its return 
+        printf("File extracted to %s.", outfile);
+        free(outfile);
     }
 
     // Lastly we make sure that no memory leaks occur by freeing all AFS related memory.
