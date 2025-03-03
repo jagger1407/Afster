@@ -93,8 +93,14 @@ int main(int argc, char** argv) {
     fread(buffer, 1, filesize, file);
 
     // Now, let's grab the filename so we can update the AFS accordingly.
-    // Note: This is for Unix-Style filepaths.
-    char* filename = strrchr(argv[3], '/');
+    // This is for Unix-Style filepaths.
+    char* unix_end = strrchr(argv[3], '/');
+    // This is for Windows-Style filepaths.
+    char* win_end = strrchr(argv[3], '\\');
+    char* filename;
+    // This is to decide which one to go for
+    if(win_end > unix_end) filename = win_end;
+    else filename = unix_end; 
     // If there is no / char in the string, only the filename has been given since it's in the same path.
     if(filename == NULL) filename = argv[3];
     // strrchr() returns a pointer to the found char, since we only want what comes after the slash, we increment the pointer.
