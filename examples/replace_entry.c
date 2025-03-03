@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
         return 3;
     }
     // Checking if arg1 contains a path to an AFS File
-    // We take the length of the given filepath
+    // We do that by copying the string so the filepath remains unaffected
     int len = strlen(argv[1]);
     char afspath[len];
     strcpy(afspath, argv[1]);
@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
         puts("ERROR: main - Replacement Filepath invalid.");
     }
 
-    // Now that we know all arguments are there,
+    // Now that we know all arguments are there and valid enough,
     // we can create an AFS Handle with the first argument
     // using the afs_open() function.
     Afs* afs = afs_open(argv[1]);
@@ -84,11 +84,13 @@ int main(int argc, char** argv) {
     int end = ftell(file);
     int filesize = end - start;
     printf("Original File size is %d Bytes.\n", filesize);
+
     puts("Replacing file...");
 
-    // Now, we create a buffer with that filesize
-    u8 buffer[filesize];
-    // ...and read the contents of the file into that buffer
+    // Now, we create a buffer with that filesize.
+    // Since malloc is used, this buffer must be freed at the end.
+    u8* buffer = (u8*)malloc(filesize);
+    // and now the contents of the file will be read into the buffer
     fseek(file, 0, SEEK_SET);
     fread(buffer, 1, filesize, file);
 
@@ -109,6 +111,8 @@ int main(int argc, char** argv) {
     // Here, the magic happens.
     // We use afs_replaceEntry() to put our file into the AFS.
     int ret = afs_replaceEntry(afs, entryId, buffer, filesize);
+
+    // The function will return >0 if an error happened, or 0 if all went well
     if(ret != 0) {
         puts("Error happened in afs_replaceEntry.");
         printf("ret = %d\n", ret);
@@ -145,6 +149,8 @@ int main(int argc, char** argv) {
 
     // Lastly we make sure that no memory leaks occur by freeing all AFS related memory.
     afs_free(afs);
+    // ...and the buffer for the file data that we created earlier.
+    free(buffer);
     return 0;
 }
 
