@@ -81,9 +81,10 @@ void afs_free(Afs* afs);
  * @param afs The AFS struct
  * @param id The index of the extracted file
  * @param output_folderpath The path to the folder where the file should be extracted to.
- * @return 0 if successful, 1 if AFS is invalid, 2 if entry ID is out of range, 3 if output_folderpath is invalid or inaccessible.
+ * @return If successful, the filepath to the extracted file will be returned, NULL if failed.
+ * @note The return string must be manually freed!
  */
-int afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath);
+char* afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath);
 
 /** Extracts a singular file from the AFS to the specified folder.
  *

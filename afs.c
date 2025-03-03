@@ -43,30 +43,49 @@ void afs_free(Afs* afs) {
     afs = NULL;
 }
 
-int afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
+char* afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
     if(afs == NULL || afs->fstream == NULL) {
         puts("ERROR: afs_extractEntryToFile - Invalid AFS pointer (afs or afs->fstream).");
-        return 1;
+        return NULL;
     }
 
     if(id < 0 || id > afs->header.entrycount) {
         puts("ERROR: afs_extractEntryToFile - Entry ID out of range.");
         printf("Entry ID: %d\tAFS entry count: %d\n", id, afs->header.entrycount);
-        return 2;
+        return NULL;
     }
 
     int off = afs->header.entryinfo[id].offset;
     int size = afs->header.entryinfo[id].size;
-    u8 buffer[size];
+    u8* buffer = (u8*)malloc(size);
 
     if(output_folderpath == NULL || *output_folderpath == 0x00 ) {
         puts("ERROR: afs_extractEntryToFile - output_folderpath invalid.");
-        return 3;
+        return NULL;
     }
 
-    char outpath[strlen(output_folderpath)+AFSMETA_NAMEBUFFERSIZE];
+    int folderpath_len = strlen(output_folderpath);
+
+    // create output file path buffer and zero it out
+    char* outpath = malloc(folderpath_len + AFSMETA_NAMEBUFFERSIZE + 1);
+    memset(outpath, 0x00, folderpath_len + AFSMETA_NAMEBUFFERSIZE + 1);
+
+    // copy the location of the output file path
     strncpy(outpath, output_folderpath, 100);
 
+    // at this point, the given argument might be "/path/to/dir/"
+    // or it might be "path/to/dir" (notice the missing slash at the end)
+    // we need to ensure both args lead to the same result
+    if(strrchr(output_folderpath, '\\') > strrchr(output_folderpath, '/')) {
+        if(outpath[folderpath_len-1] != '\\') {
+            outpath[folderpath_len] = '\\';
+        }
+    }
+    else {
+        if(outpath[folderpath_len-1] != '/') {
+            outpath[folderpath_len] = '/';
+        }
+    }
     if(*afs->meta[id].filename != 0x00) {
         strncat(outpath, afs->meta[id].filename, AFSMETA_NAMEBUFFERSIZE);
     }
@@ -81,7 +100,7 @@ int afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
     if(outfile == NULL) {
         puts("ERROR: afs_extractEntryToFile - File pointer failed to create.");
         printf("outfile path: %s\n", outpath);
-        return 3;
+        return NULL;
     }
 
     fseek(afs->fstream, off, SEEK_SET);
@@ -89,8 +108,8 @@ int afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
     fwrite(buffer, 1, size, outfile);
 
     fclose(outfile);
-
-    return 0;
+    free(buffer);
+    return outpath;
 }
 
 u8* afs_extractEntryToBuffer(Afs* afs, int id) {
