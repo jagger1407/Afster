@@ -1,8 +1,12 @@
 *.txt
 *.afs
 *.AFS
+*.AFL
+*.afl
 *.exe
 *.o
+examples/build.sh
+examples/*/
 
 Afster.kdev4
 CMakeLists.txt
