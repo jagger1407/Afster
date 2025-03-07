@@ -30,7 +30,8 @@ void printHelp() {
  * This program takes in 3 arguments:
  * arg1 = A path to an AFS file
  * arg2 = Either a path to an AFL file or the letter 'n' in case no AFL is wanted
- * arg3 = A path to an output folder where all entries are to be stored
+ * arg3 = The index of a singular entry to extract, or the letter 'n' in case all files should be extracted
+ * arg4 = A path to an output folder where all entries are to be stored
 */
 int main(int argc, char** argv) {
     // Checking if all arguments are present

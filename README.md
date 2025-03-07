@@ -8,7 +8,12 @@ Additionally, this library can import AFL (AFS File List) files that house names
 
 ## Usage
 
-A folder with example programs has been packaged with this library to showcase how it can be used.
+A folder with example programs has been packaged with this library to showcase how it can be used. You can compile these using any C compiler. 
+
+An example compilation of [display_afs.c](https://github.com/jagger1407/Afster/blob/main/examples/display_afs.c) would be:
+```bash
+gcc -o display ../afs.c display_afs.c
+```
 
 ## Status
 
@@ -31,3 +36,4 @@ Currently, the library is able to:
 - [ ] Change the size of an entry
 - [ ] Insert/Append an entry
 - [x] Replace an entry
+- [x] Import Folder
