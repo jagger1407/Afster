@@ -372,11 +372,13 @@ int afs_replaceEntriesFromFiles(Afs* afs, int* entries, char** filepaths, int am
     u8* fileData[amount_entries];
     int fileSizes[amount_entries];
 
+    bool allEntriesSkipped = true;
     for(int i=0;i<amount_entries;i++) {
         // If the file is marked "skip", we skip it
         if(entries[i] == -1) {
             continue;
         }
+        allEntriesSkipped = false;
         FILE* curFile = fopen(filepaths[i], "rb");
         if(curFile == NULL) {
             puts("ERROR: afs_replaceEntriesFromFiles - a filepath isn't accessible or doesn't exist!");
@@ -404,6 +406,10 @@ int afs_replaceEntriesFromFiles(Afs* afs, int* entries, char** filepaths, int am
         afs->meta[entries[i]].filesize = size;
 
         fclose(curFile);
+    }
+    if(allEntriesSkipped) {
+        puts("ERROR: afs_replaceEntriesFromFiles - All entries were skipped.");
+        return 2;
     }
 
     // Change the AFS Header info
@@ -451,6 +457,31 @@ int afs_replaceEntriesFromFiles(Afs* afs, int* entries, char** filepaths, int am
         // If this is a regular entry, we fread it from the AFS and insert it into the buffer that way
         fseek(afs->fstream, oldEntries[i].offset, SEEK_SET);
         fread(buffer + afs->header.entryinfo[i].offset - dataSectionOffset, 1, afs->header.entryinfo[i].size, afs->fstream);
+    }
+
+    // Update Metadata
+    for(int i=0;i<amount_entries;i++) {
+        AfsEntryMetadata* meta = afs->meta + entries[i];
+        // Filename
+        char* unix_filename = strrchr(filepaths[i], '/') + 1;
+        char* win_filename = strrchr(filepaths[i], '\\') + 1;
+        if(win_filename > unix_filename) {
+            strncpy(meta->filename, win_filename, AFSMETA_NAMEBUFFERSIZE);
+        }
+        else {
+            strncpy(meta->filename, unix_filename, AFSMETA_NAMEBUFFERSIZE);
+        }
+        // Last Modified Date
+        time_t current_time = time(NULL);
+        struct tm tm = *localtime(&current_time);
+        meta->lastModified.year = tm.tm_year + 1900;
+        meta->lastModified.month = tm.tm_mon + 1;
+        meta->lastModified.day = tm.tm_mday;
+        meta->lastModified.hours = tm.tm_hour;
+        meta->lastModified.minutes = tm.tm_min;
+        meta->lastModified.seconds = tm.tm_sec;
+        // File Size
+        meta->filesize = fileSizes[i];
     }
 
     // Write the new entryinfo to the AFS file
