@@ -55,28 +55,28 @@ char* afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
         return NULL;
     }
 
-    int off = afs->header.entryinfo[id].offset;
-    int size = afs->header.entryinfo[id].size;
-    u8* buffer = (u8*)malloc(size);
-
     if(output_folderpath == NULL || *output_folderpath == 0x00 ) {
         puts("ERROR: afs_extractEntryToFile - output_folderpath invalid.");
         return NULL;
     }
 
+    int off = afs->header.entryinfo[id].offset;
+    int size = afs->header.entryinfo[id].size;
+    u8* buffer = (u8*)malloc(size);
+
     int folderpath_len = strlen(output_folderpath);
 
     // create output file path buffer and zero it out
-    char* outpath = malloc(folderpath_len + AFSMETA_NAMEBUFFERSIZE + 1);
-    memset(outpath, 0x00, folderpath_len + AFSMETA_NAMEBUFFERSIZE + 1);
+    char* outpath = malloc(folderpath_len + AFSMETA_NAMEBUFFERSIZE + 2);
+    memset(outpath, 0x00, folderpath_len + AFSMETA_NAMEBUFFERSIZE + 2);
 
     // copy the location of the output file path
-    strncpy(outpath, output_folderpath, 100);
+    strncpy(outpath, output_folderpath, folderpath_len);
 
     // at this point, the given argument might be "/path/to/dir/"
     // or it might be "path/to/dir" (notice the missing slash at the end)
     // we need to ensure both args lead to the same result
-    if(strrchr(output_folderpath, '\\') > strrchr(output_folderpath, '/')) {
+    if(strrchr(outpath, '\\') > strrchr(outpath, '/')) {
         if(outpath[folderpath_len-1] != '\\') {
             outpath[folderpath_len] = '\\';
         }
@@ -95,6 +95,7 @@ char* afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
         strncat(outpath, temp, AFSMETA_NAMEBUFFERSIZE);
     }
 
+    int outpathLen = strlen(outpath);
     FILE* outfile = fopen(outpath, "wb");
 
     if(outfile == NULL) {
@@ -149,8 +150,18 @@ int afs_extractFull(Afs* afs, const char* output_folderpath) {
     char folderpath[pathlen+2];
     memset(folderpath, 0x00, pathlen+2);
     strcpy(folderpath, output_folderpath);
-    if(output_folderpath[pathlen-1] != '/') {
-        folderpath[pathlen++] = '/';
+
+    // if windows
+    if(strrchr(folderpath, '\\') > strrchr(folderpath, '/')) {
+        if(output_folderpath[pathlen-1] != '\\') {
+            folderpath[pathlen++] = '\\';
+        }
+    }
+    // if linux
+    else {
+        if(output_folderpath[pathlen-1] != '/') {
+            folderpath[pathlen++] = '/';
+        }
     }
 
     if(access(folderpath, F_OK) != 0) {
@@ -240,6 +251,17 @@ int _afs_replaceEntry_noResize(Afs* afs, int id, u8* data, int data_size) {
     return 0;
 }
 
+int _afs_calcReservedSpace(int new_size) {
+if(AFS_RESERVEDSPACEBUFFER % 0x10 != 0) {
+        return -3;
+    }
+
+    int newReservedSpace = (new_size / AFS_RESERVEDSPACEBUFFER + 1) * AFS_RESERVEDSPACEBUFFER;
+
+    return newReservedSpace;
+}
+
+
 int _afs_resizeEntrySpace(Afs* afs, int id, int new_size) {
     if(afs == NULL || afs->fstream == NULL) {
         return 1;
@@ -247,14 +269,14 @@ int _afs_resizeEntrySpace(Afs* afs, int id, int new_size) {
     if(id < 0 || id >= afs->header.entrycount) {
         return 2;
     }
-    if(AFS_RESERVEDSPACEBUFFER % 0x10 != 0) {
-        return 3;
-    }
 
     int oldSize = afs->header.entryinfo[id].size;
     afs->header.entryinfo[id].size = new_size;
 
-    int newReservedSpace = (new_size / AFS_RESERVEDSPACEBUFFER + 1) * AFS_RESERVEDSPACEBUFFER;
+    int newReservedSpace = _afs_calcReservedSpace(new_size);
+    if(newReservedSpace < 0) {
+        return -newReservedSpace;
+    }
     u8* buffer = (u8*)malloc(newReservedSpace);
     memset(buffer, 0x00, newReservedSpace);
 
@@ -314,7 +336,7 @@ int afs_replaceEntry(Afs* afs, int id, u8* data, int data_size) {
     }
     if(data == NULL || data_size <= 0) {
         puts("ERROR: afs_replaceEntry - Given data is invalid (NULL or zero size).");
-        printf("data: 0x%08x\tdata_size: %d", data, data_size);
+        printf("data: 0x%08x\tdata_size: %d", *(unsigned int*)&data, data_size);
         return 3;
     }
 
@@ -328,6 +350,130 @@ int afs_replaceEntry(Afs* afs, int id, u8* data, int data_size) {
     return 0;
 }
 
+int afs_replaceEntriesFromFiles(Afs* afs, int* entries, char** filepaths, int amount_entries) {
+    if(afs == NULL || afs->fstream == NULL) {
+        puts("ERROR: afs_replaceEntriesFromFiles - Invalid AFS File.");
+        return 1;
+    }
+    if(entries == NULL || filepaths == NULL) {
+        puts("ERROR: afs_replaceEntriesFromFiles - Invalid array args.");
+        return 2;
+    }
+    if(amount_entries <= 0) {
+        puts("ERROR: afs_replaceEntriesFromFiles - Invalid replaced entry count.");
+        return 3;
+    }
+
+    // Store the old entryinfo array
+    AfsEntryInfo* oldEntries = (AfsEntryInfo*)malloc(sizeof(AfsEntryInfo) * (afs->header.entrycount + 1));
+    memcpy(oldEntries, afs->header.entryinfo, sizeof(AfsEntryInfo) * (afs->header.entrycount + 1));
+
+    // Store the files that are meant to replace the entries
+    u8* fileData[amount_entries];
+    int fileSizes[amount_entries];
+
+    for(int i=0;i<amount_entries;i++) {
+        // If the file is marked "skip", we skip it
+        if(entries[i] == -1) {
+            continue;
+        }
+        FILE* curFile = fopen(filepaths[i], "rb");
+        if(curFile == NULL) {
+            puts("ERROR: afs_replaceEntriesFromFiles - a filepath isn't accessible or doesn't exist!");
+            printf("File path #%d: %s\n", i, filepaths[i]);
+            return 2;
+        }
+        int size = ftell(curFile);
+        fseek(curFile, 0, SEEK_END);
+        size = ftell(curFile) - size;
+        fileSizes[i] = size;
+
+        fileData[i] = (u8*)malloc(size);
+
+        fseek(curFile, 0, SEEK_SET);
+        fread(fileData[i], 1, size, curFile);
+
+        char* filename = NULL;
+        char* win_fname = strrchr(filepaths[i], '\\');
+        char* unix_fname = strrchr(filepaths[i], '/');
+        if(win_fname > unix_fname) filename = win_fname + 1;
+        else if(unix_fname == NULL) filename = filepaths[i];
+        else filename = unix_fname + 1;
+
+        strncpy(afs->meta[entries[i]].filename, filename, AFSMETA_NAMEBUFFERSIZE);
+        afs->meta[entries[i]].filesize = size;
+
+        fclose(curFile);
+    }
+
+    // Change the AFS Header info
+    int curOffset = oldEntries[0].offset;
+    for(int i=0; i < afs->header.entrycount; i++) {
+        bool isImported = false;
+        afs->header.entryinfo[i].offset = curOffset;
+
+        for(int j=0;j<amount_entries;j++) {
+            if(entries[j] == i) {
+                isImported = true;
+                afs->header.entryinfo[i].size = fileSizes[j];
+                int reservedSpace = _afs_calcReservedSpace(fileSizes[j]);
+                if(reservedSpace > 0) curOffset += reservedSpace;
+                break;
+            }
+        }
+        if(isImported) continue;
+
+        afs->header.entryinfo[i].size = oldEntries[i].size;
+        int reservedSpace = oldEntries[i+1].offset - oldEntries[i].offset;
+        curOffset += reservedSpace;
+    }
+    // Metadata
+    afs->header.entryinfo[afs->header.entrycount].offset = curOffset;
+
+    // Create output buffer
+    int dataSectionSize_new = curOffset - oldEntries[0].offset;
+    int dataSectionOffset = afs->header.entryinfo[0].offset;
+    u8* buffer = (u8*)malloc(dataSectionSize_new);
+    memset(buffer, 0x00, dataSectionSize_new);
+    // Insert data
+    for(int i=0; i < afs->header.entrycount; i++) {
+        bool isImported = false;
+        for(int j=0;j<amount_entries;j++) {
+            if(entries[j] == i) {
+                isImported = true;
+                // If this is an entry that should be replaced, we take its file data and insert it
+                memcpy(buffer + afs->header.entryinfo[i].offset - dataSectionOffset, fileData[j], fileSizes[j]);
+                break;
+            }
+        }
+        if(isImported) continue;
+
+        // If this is a regular entry, we fread it from the AFS and insert it into the buffer that way
+        fseek(afs->fstream, oldEntries[i].offset, SEEK_SET);
+        fread(buffer + afs->header.entryinfo[i].offset - dataSectionOffset, 1, afs->header.entryinfo[i].size, afs->fstream);
+    }
+
+    // Write the new entryinfo to the AFS file
+    fseek(afs->fstream, 8, SEEK_SET);
+    fwrite(afs->header.entryinfo, sizeof(AfsEntryInfo), afs->header.entrycount+1, afs->fstream);
+
+    // The Big Write
+    fseek(afs->fstream, afs->header.entryinfo[0].offset, SEEK_SET);
+    fwrite(buffer, 1, dataSectionSize_new, afs->fstream);
+
+    // Write metadata to the AFS file
+    fseek(afs->fstream, afs->header.entryinfo[afs->header.entrycount].offset, SEEK_SET);
+    fwrite(afs->meta, sizeof(AfsEntryMetadata), afs->header.entrycount, afs->fstream);
+
+    free(buffer);
+    for(int i=0;i<amount_entries;i++) {
+        if(entries[i] != -1) {
+            free(fileData[i]);
+        }
+    }
+    free(oldEntries);
+    return 0;
+}
 
 int afs_renameEntry(Afs* afs, int id, const char* new_name, bool permanent) {
     if(afs == NULL || afs->fstream == NULL) {

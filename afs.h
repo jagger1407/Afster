@@ -113,6 +113,14 @@ int afs_extractFull(Afs* afs, const char* output_folderpath);
  */
 int _afs_replaceEntry_noResize(Afs* afs, int id, u8* data, int data_size);
 
+/** Calculates the reserved space for this entry.
+ * @note DESIGNED FOR INTERNAL USE ONLY
+ *
+ * @param new_size The new size of the entry
+ * @return The amount of space that should be reserved for this entry.
+ */
+int _afs_calcReservedSpace(int new_size);
+
 /** Clears and resizes the reserved space for the specified entry.
  * This will change each offset for following entries!
  * @note DESIGNED FOR INTERNAL USE ONLY
@@ -133,6 +141,18 @@ int _afs_resizeEntrySpace(Afs* afs, int id, int new_size);
  * @return 0 if successful, 1 if AFS is invalid, 2 if entry ID is out of range, 3 if data array is invalid (NULL or zero size), 4 if resizing was necessary but failed.
  */
 int afs_replaceEntry(Afs* afs, int id, u8* data, int data_size);
+
+/** Replaces multiple entries in the AFS with given files.
+ *
+ * @param afs The AFS struct
+ * @param entries An array containing all entry IDs that should be replaced (Entries marked -1 will be skipped)
+ * @param filepaths An array containing all file paths for those entries
+ * @param amount_entries The total amount of entries that should be replaced.
+ * @note entries and filepaths should have the same size.
+ *
+ * @return 0 if successful, 1 if AFS is invalid, 2 if there was an issue with the passed arrays, 3 if amount_entries is invalid.
+ */
+int afs_replaceEntriesFromFiles(Afs* afs, int* entries, char** filepaths, int amount_entries);
 
 /** Renames an entry of the AFS.
  *
