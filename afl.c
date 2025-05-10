@@ -4,7 +4,7 @@ Afl* afl_open(const char* aflPath) {
     if(aflPath == nullptr || *aflPath == '\0') {
         return NULL;
     }
-    FILE* fp = fopen(aflPath, "rb");
+    FILE* fp = fopen(aflPath, "rb+");
 
     if(fp == NULL) {
         puts("ERROR: afl_open - AFL Filepath invalid.");
@@ -33,6 +33,25 @@ char* afl_getName(Afl* afl, int id) {
     return _AFL_NAME(afl, id);
 }
 
+int afl_rename(Afl* afl, int id, const char* newName) {
+    if(afl == NULL) {
+        puts("ERROR: afl_rename - afl null.");
+        return 1;
+    }
+    if(afl->fstream == NULL) {
+        puts("ERROR: afl_rename - afl exists, but afs->fstream doesn't.");
+        return 1;
+    }
+    if(id < 0 || id > afl->head.filecount) {
+        puts("ERROR: afl_rename - Entry ID out of range.");
+        return 2;
+    }
+
+    strncpy(_AFL_NAME(afl, id), newName, AFL_NAMEBUFFERSIZE);
+
+    return 0;
+}
+
 void afl_free(Afl* afl) {
     if(afl == NULL) {
         puts("WARNING: afl_free - afl pointer already freed. Returning.");
@@ -42,6 +61,40 @@ void afl_free(Afl* afl) {
     free(afl->filenames);
     free(afl);
     afl = NULL;
+}
+
+int afl_save(Afl* afl) {
+    if(afl == NULL) {
+        puts("ERROR: afl_save - afl null.");
+        return 1;
+    }
+    if(afl->fstream == NULL) {
+        puts("ERROR: afl_save - fstream null.");
+        return 1;
+    }
+    fseek(afl->fstream, 0, SEEK_SET);
+    fwrite(&afl->head, sizeof(AflHeader), 1, afl->fstream);
+    fwrite(afl->filenames, AFL_NAMEBUFFERSIZE, afl->head.filecount, afl->fstream);
+
+    return 0;
+}
+
+int afl_saveNew(Afl* afl, const char* filepath) {
+    if(afl == NULL) {
+        puts("ERROR: afl_save - afl null.");
+        return 1;
+    }
+    FILE* outfile = fopen(filepath, "wb+");
+    if(outfile == NULL) {
+        puts("ERROR: afl_save - filepath can't be written to.");
+        return 2;
+    }
+    fseek(afl->fstream, 0, SEEK_SET);
+    fwrite(&afl->head, sizeof(AflHeader), 1, outfile);
+    fwrite(afl->filenames, AFL_NAMEBUFFERSIZE, afl->head.filecount, outfile);
+
+    fclose(outfile);
+    return 0;
 }
 
 int afl_importAfl(Afl* afl, Afs* afs, bool permament) {
