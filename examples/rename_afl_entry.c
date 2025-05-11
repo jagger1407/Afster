@@ -23,10 +23,10 @@ void printHelp() {
 
 /*
  * This is an example program used to demonstrate how one can use this library.
- * In this case, we rename one singular entry within the AFS.
+ * In this case, we rename one singular entry within the AFL.
  *
  * This program takes in 3 arguments:
- * arg1 = A path to an AFS file
+ * arg1 = A path to an AFL file
  * arg2 = The index of the entry whose name we're changing
  * arg3 = The new name.
 */
@@ -69,9 +69,7 @@ int main(int argc, char** argv) {
     // We convert the given index into an int
     int entryId = atoi(argv[2]);
 
-    // Here we rename the entry. If everything turned out correctly,
-    // The 'true' signals that this change will be permanently written to the file.
-    // We store the return code to handle potential errors.
+    // Here we rename the entry.
     int returnCode = afl_rename(afl, entryId, argv[3]);
 
     // If anything went wrong while this function was changing the name,
@@ -87,7 +85,7 @@ int main(int argc, char** argv) {
     // To permanently change it, we'll save the file using afl_save().
     afl_save(afl);
 
-    // Lastly we make sure that no memory leaks occur by freeing all AFS related memory.
+    // Lastly we make sure that no memory leaks occur by freeing all AFL related memory.
     afl_free(afl);
     return 0;
 }

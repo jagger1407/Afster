@@ -54,8 +54,7 @@ int main(int argc, char** argv) {
     }
 
     // Now, we create a table of all the elements within the AFL.
-    // The metadata section shows that the maximum size of a name is 0x20
-    // aka 32 Bytes, hence the 32 char length of the 'Name' column here.
+    // Each entry inside the AFL has a buffer of 32 aka 0x20 Bytes.
     puts(
         "+-------+----------------------------------+\n" \
         "| ID    | Name                             |\n" \
@@ -89,12 +88,12 @@ int main(int argc, char** argv) {
         line[10+strlen(name)] = ' ';
 
         // Now that all the information has been placed into the line,
-        // we can finally print it out and move to the next entry in the AFS.
+        // we can finally print it out and move to the next entry in the AFL.
         printf("%s\n", line);
     }
     puts("+-------+----------------------------------+");
 
-    // Lastly we make sure that no memory leaks occur by freeing all AFS related memory.
+    // Lastly we make sure that no memory leaks occur by freeing all AFL related memory.
     afl_free(afl);
     return 0;
 }
