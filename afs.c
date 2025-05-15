@@ -67,7 +67,7 @@ char* afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
     int folderpath_len = strlen(output_folderpath);
 
     // create output file path buffer and zero it out
-    char* outpath = malloc(folderpath_len + AFSMETA_NAMEBUFFERSIZE + 2);
+    char* outpath = (char*)malloc(folderpath_len + AFSMETA_NAMEBUFFERSIZE + 2);
     memset(outpath, 0x00, folderpath_len + AFSMETA_NAMEBUFFERSIZE + 2);
 
     // copy the location of the output file path
@@ -583,7 +583,7 @@ Timestamp afs_getLastModifiedDate(Afs* afs, int id) {
 }
 
 char* afs_timestampToString(Timestamp t) {
-    char* out = calloc(1, 32);
+    char* out = (char*)calloc(1, 32);
     sprintf(out, "%.2d.%.2d.%.4d %.2d:%.2d:%.2d", t.day, t.month, t.year, t.hours, t.minutes, t.seconds);
     return out;
 }
