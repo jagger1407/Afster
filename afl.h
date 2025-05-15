@@ -31,6 +31,22 @@ typedef struct {
  */
 Afl* afl_open(const char* aflPath);
 
+/** Creates an AFL from a given AFS.
+ * 
+ * @param afs Handle for the AFS
+ * @param filepath Path to the resulting AFL file, or NULL if no file is wanted.
+ * @return Handle to the constructed AFL struct, NULL if it failed.
+ */
+Afl* afl_create(Afs* afs, char* filepath);
+
+/** Creates an AFL with the given size.
+ * 
+ * @param entries The amount of entries inside the AFL
+ * @param filepath Path to the resulting AFL file, or NULL if no file is wanted.
+ * @return Handle to the constructed AFL struct, NULL if it failed.
+ */
+Afl* afl_new(u16 entries, char* filepath);
+
 /** Gets the name of the file with the specified index.
  *  Note that this function does not create a pointer, and thus
  *  does not require the return pointer to be freed.

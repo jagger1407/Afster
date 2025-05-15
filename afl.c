@@ -24,6 +24,61 @@ Afl* afl_open(const char* aflPath) {
     return afl;
 }
 
+Afl* afl_create(Afs* afs, char* filepath) {
+    if(afs == NULL || afs->header.entrycount < 0) {
+        puts("ERROR: afl_create - Invalid afs.");
+        return NULL;
+    }
+    if(filepath != NULL) {
+        u32 len = strlen(filepath);
+        if(strcmp(filepath + len - 4, ".afl") != 0 && strcmp(filepath + len - 4, ".AFL") != 0) {
+            puts("ERROR: afl_new - filepath doesn't point to a valid .afl file.");
+            puts("INFO: path has to end with either '.afl' or '.AFL'.");
+            return NULL;
+        } 
+    }
+
+    Afl* afl = (Afl*)malloc(sizeof(Afl));
+    strcpy(afl->head.identifier, "AFL");
+    afl->head.entrycount = afs->header.entrycount;
+    afl->entrynames = (char*)malloc(afl->head.entrycount * AFL_NAMEBUFFERSIZE);
+
+    for(int i=0;i<afl->head.entrycount;i++) {
+        strncpy(_AFL_NAME(afl,i), afs->meta[i].filename, AFL_NAMEBUFFERSIZE);
+    }
+
+    if(filepath != NULL) {
+        afl->fstream = fopen(filepath, "rb+");
+        afl_save(afl);
+    }
+
+    return afl;
+}
+
+Afl* afl_new(u16 entries, char* filepath) {
+    if(filepath != NULL) {
+        u32 len = strlen(filepath);
+        if(strcmp(filepath + len - 4, ".afl") != 0 && strcmp(filepath + len - 4, ".AFL") != 0) {
+            puts("ERROR: afl_new - filepath doesn't point to a valid .afl file.");
+            puts("INFO: path has to end with either '.afl' or '.AFL'.");
+            return NULL;
+        } 
+    }
+
+    Afl* afl = (Afl*)malloc(sizeof(Afl));
+    strcpy(afl->head.identifier, "AFL");
+    afl->head.entrycount = entries;
+    afl->entrynames = (char*)malloc(afl->head.entrycount * AFL_NAMEBUFFERSIZE);
+    memset(afl->entrynames, 0x00, afl->head.entrycount * AFL_NAMEBUFFERSIZE);
+
+    if(filepath != NULL) {
+        afl->fstream = fopen(filepath, "wb+");
+        afl_save(afl);
+    }
+
+    return afl;
+}
+
 char* afl_getName(Afl* afl, int id) {
     if(id < 0 || id >= afl->head.entrycount) {
         puts("ERROR: afl_getName - Entry ID out of range.");
@@ -75,6 +130,7 @@ int afl_save(Afl* afl) {
     fseek(afl->fstream, 0, SEEK_SET);
     fwrite(&afl->head, sizeof(AflHeader), 1, afl->fstream);
     fwrite(afl->entrynames, AFL_NAMEBUFFERSIZE, afl->head.entrycount, afl->fstream);
+    fseek(afl->fstream, 0, SEEK_SET);
 
     return 0;
 }
