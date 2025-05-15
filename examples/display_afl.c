@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
     );
 
     // We loop through each entry in the AFL
-    for(int i=0; i < afl->head.filecount; i++) {
+    for(int i=0; i < afl->head.entrycount; i++) {
         // First, we create the template line without any information in it
         char line[81];
         strcpy(line, "|       |                                  |");

@@ -16,8 +16,8 @@ Afl* afl_open(const char* aflPath) {
 
     fread(&afl->head, 0x10, 1, afl->fstream);
 
-    afl->entrynames = (char*)malloc(AFL_NAMEBUFFERSIZE * afl->head.filecount);
-    fread(afl->entrynames, AFL_NAMEBUFFERSIZE, afl->head.filecount, fp);
+    afl->entrynames = (char*)malloc(AFL_NAMEBUFFERSIZE * afl->head.entrycount);
+    fread(afl->entrynames, AFL_NAMEBUFFERSIZE, afl->head.entrycount, fp);
 
     fseek(fp, 0, SEEK_SET);
 
@@ -25,9 +25,9 @@ Afl* afl_open(const char* aflPath) {
 }
 
 char* afl_getName(Afl* afl, int id) {
-    if(id < 0 || id >= afl->head.filecount) {
+    if(id < 0 || id >= afl->head.entrycount) {
         puts("ERROR: afl_getName - Entry ID out of range.");
-        printf("Entry ID: %d\tAFL Entry Count: %d\n", id, afl->head.filecount);
+        printf("Entry ID: %d\tAFL Entry Count: %d\n", id, afl->head.entrycount);
         return NULL;
     }
     return _AFL_NAME(afl, id);
@@ -42,7 +42,7 @@ int afl_rename(Afl* afl, int id, const char* newName) {
         puts("ERROR: afl_rename - afl exists, but afs->fstream doesn't.");
         return 1;
     }
-    if(id < 0 || id > afl->head.filecount) {
+    if(id < 0 || id > afl->head.entrycount) {
         puts("ERROR: afl_rename - Entry ID out of range.");
         return 2;
     }
@@ -74,7 +74,7 @@ int afl_save(Afl* afl) {
     }
     fseek(afl->fstream, 0, SEEK_SET);
     fwrite(&afl->head, sizeof(AflHeader), 1, afl->fstream);
-    fwrite(afl->entrynames, AFL_NAMEBUFFERSIZE, afl->head.filecount, afl->fstream);
+    fwrite(afl->entrynames, AFL_NAMEBUFFERSIZE, afl->head.entrycount, afl->fstream);
 
     return 0;
 }
@@ -91,7 +91,7 @@ int afl_saveNew(Afl* afl, const char* filepath) {
     }
     fseek(afl->fstream, 0, SEEK_SET);
     fwrite(&afl->head, sizeof(AflHeader), 1, outfile);
-    fwrite(afl->entrynames, AFL_NAMEBUFFERSIZE, afl->head.filecount, outfile);
+    fwrite(afl->entrynames, AFL_NAMEBUFFERSIZE, afl->head.entrycount, outfile);
 
     fclose(outfile);
     return 0;
@@ -111,9 +111,9 @@ int afl_importAfl(Afl* afl, Afs* afs, bool permament) {
         return 2;
     }
 
-    if(afl->head.filecount != afs->header.entrycount) {
+    if(afl->head.entrycount != afs->header.entrycount) {
         puts("WARNING: afl_importAfl - AFS file count and AFL file count are mismatched.");
-        printf("AFS file count: %d\nAFL file count: %d\n", afs->header.entrycount, afl->head.filecount);
+        printf("AFS file count: %d\nAFL file count: %d\n", afs->header.entrycount, afl->head.entrycount);
     }
 
     for(int i=0;i<afs->header.entrycount;i++) {

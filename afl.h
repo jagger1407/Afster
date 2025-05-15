@@ -15,7 +15,7 @@ typedef struct {
     char identifier[4];
     u32 unknown1;
     s32 unknown2;
-    u32 filecount;
+    u32 entrycount;
 } AflHeader;
 
 typedef struct {
