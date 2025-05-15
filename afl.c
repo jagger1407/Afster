@@ -16,8 +16,8 @@ Afl* afl_open(const char* aflPath) {
 
     fread(&afl->head, 0x10, 1, afl->fstream);
 
-    afl->filenames = (char*)malloc(AFL_NAMEBUFFERSIZE * afl->head.filecount);
-    fread(afl->filenames, AFL_NAMEBUFFERSIZE, afl->head.filecount, fp);
+    afl->entrynames = (char*)malloc(AFL_NAMEBUFFERSIZE * afl->head.filecount);
+    fread(afl->entrynames, AFL_NAMEBUFFERSIZE, afl->head.filecount, fp);
 
     fseek(fp, 0, SEEK_SET);
 
@@ -58,7 +58,7 @@ void afl_free(Afl* afl) {
         return;
     }
     fclose(afl->fstream);
-    free(afl->filenames);
+    free(afl->entrynames);
     free(afl);
     afl = NULL;
 }
@@ -74,7 +74,7 @@ int afl_save(Afl* afl) {
     }
     fseek(afl->fstream, 0, SEEK_SET);
     fwrite(&afl->head, sizeof(AflHeader), 1, afl->fstream);
-    fwrite(afl->filenames, AFL_NAMEBUFFERSIZE, afl->head.filecount, afl->fstream);
+    fwrite(afl->entrynames, AFL_NAMEBUFFERSIZE, afl->head.filecount, afl->fstream);
 
     return 0;
 }
@@ -91,7 +91,7 @@ int afl_saveNew(Afl* afl, const char* filepath) {
     }
     fseek(afl->fstream, 0, SEEK_SET);
     fwrite(&afl->head, sizeof(AflHeader), 1, outfile);
-    fwrite(afl->filenames, AFL_NAMEBUFFERSIZE, afl->head.filecount, outfile);
+    fwrite(afl->entrynames, AFL_NAMEBUFFERSIZE, afl->head.filecount, outfile);
 
     fclose(outfile);
     return 0;

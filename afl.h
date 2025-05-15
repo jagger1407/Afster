@@ -9,7 +9,7 @@
 
 #define AFL_NAMEBUFFERSIZE AFSMETA_NAMEBUFFERSIZE
 
-#define _AFL_NAME(afl, x) (afl->filenames + (x * AFL_NAMEBUFFERSIZE))
+#define _AFL_NAME(afl, x) (afl->entrynames + (x * AFL_NAMEBUFFERSIZE))
 
 typedef struct {
     char identifier[4];
@@ -20,7 +20,7 @@ typedef struct {
 
 typedef struct {
     AflHeader head;
-    char* filenames;
+    char* entrynames;
     FILE* fstream;
 } Afl;
 
