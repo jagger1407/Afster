@@ -5,6 +5,8 @@
 *.afl
 *.exe
 *.o
+*.so
+*.dll
 examples/build.sh
 examples/*/
 
