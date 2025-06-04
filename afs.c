@@ -43,6 +43,10 @@ void afs_free(Afs* afs) {
     afs = NULL;
 }
 
+int afs_getEntrycount(Afs* afs) {
+    return afs->header.entrycount;
+}
+
 char* afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
     if(afs == NULL || afs->fstream == NULL) {
         puts("ERROR: afs_extractEntryToFile - Invalid AFS pointer (afs or afs->fstream).");

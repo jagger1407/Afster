@@ -77,6 +77,13 @@ Afs* afs_open(char* filePath);
  */
 void afs_free(Afs* afs);
 
+/** Gets the total amount of entries within this AFS. 
+ * 
+ * @param afs The AFS struct
+ * @return The total entry count (EXCLUDING Metadata section).
+ */
+int afs_getEntrycount(Afs* afs);
+
 /** Extracts a singular file from the AFS to the specified folder.
  *
  * @param afs The AFS struct
