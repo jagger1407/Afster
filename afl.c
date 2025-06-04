@@ -88,6 +88,10 @@ char* afl_getName(Afl* afl, int id) {
     return _AFL_NAME(afl, id);
 }
 
+int afl_getEntrycount(Afl* afl) {
+    return afl->head.entrycount;
+}
+
 int afl_rename(Afl* afl, int id, const char* newName) {
     if(afl == NULL) {
         puts("ERROR: afl_rename - afl null.");

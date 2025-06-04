@@ -26,7 +26,7 @@ typedef struct {
 
 /** Opens an AFS file and builds the handle for it.
  *
- * @param aflPath path the the AFL file
+ * @param aflPath path to the AFL file
  * @return Handle to the constructed AFL struct, NULL if it failed.
  */
 Afl* afl_open(const char* aflPath);
@@ -56,6 +56,13 @@ Afl* afl_new(u16 entries, char* filepath);
  * @return char pointer to the name of the file, or NULL if the ID is out of range.
  */
 char* afl_getName(Afl* afl, int id);
+
+/** Gets the total amount of entries within this AFL. 
+ * 
+ * @param afl handle of the AFL
+ * @return The total entry count.
+ */
+int afl_getEntrycount(Afl* afl);
 
 /** Renames an entry within the AFL file.
  *
