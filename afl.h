@@ -29,7 +29,7 @@ typedef struct {
  * @param aflPath path to the AFL file
  * @return Handle to the constructed AFL struct, NULL if it failed.
  */
-Afl* afl_open(const char* aflPath);
+EXPORT Afl* afl_open(const char* aflPath);
 
 /** Creates an AFL from a given AFS.
  * 
@@ -37,7 +37,7 @@ Afl* afl_open(const char* aflPath);
  * @param filepath Path to the resulting AFL file, or NULL if no file is wanted.
  * @return Handle to the constructed AFL struct, NULL if it failed.
  */
-Afl* afl_create(Afs* afs, char* filepath);
+EXPORT Afl* afl_create(Afs* afs, char* filepath);
 
 /** Creates an AFL with the given size.
  * 
@@ -45,7 +45,7 @@ Afl* afl_create(Afs* afs, char* filepath);
  * @param filepath Path to the resulting AFL file, or NULL if no file is wanted.
  * @return Handle to the constructed AFL struct, NULL if it failed.
  */
-Afl* afl_new(u16 entries, char* filepath);
+EXPORT Afl* afl_new(u16 entries, char* filepath);
 
 /** Gets the name of the file with the specified index.
  *  Note that this function does not create a pointer, and thus
@@ -55,14 +55,14 @@ Afl* afl_new(u16 entries, char* filepath);
  * @param id index of the file
  * @return char pointer to the name of the file, or NULL if the ID is out of range.
  */
-char* afl_getName(Afl* afl, int id);
+EXPORT char* afl_getName(Afl* afl, int id);
 
 /** Gets the total amount of entries within this AFL. 
  * 
  * @param afl handle of the AFL
  * @return The total entry count.
  */
-int afl_getEntrycount(Afl* afl);
+EXPORT int afl_getEntrycount(Afl* afl);
 
 /** Renames an entry within the AFL file.
  *
@@ -71,19 +71,19 @@ int afl_getEntrycount(Afl* afl);
  * @param newName the new name for this entry
  * @return 0 if successful, 1 if AFL is invalid, 2 if given entry ID is invalid.
  */
-int afl_rename(Afl* afl, int id, const char* newName);
+EXPORT int afl_rename(Afl* afl, int id, const char* newName);
 
 /** Frees all AFL related memory.
  * @param afl The AFL struct.
  */
-void afl_free(Afl* afl);
+EXPORT void afl_free(Afl* afl);
 
 /** Writes the current state of the AFL to its file.
  *
  * @param afl handle of the AFL
  * @return 0 if successful, 1 if AFL is invalid
  */
-int afl_save(Afl* afl);
+EXPORT int afl_save(Afl* afl);
 
 /** Writes the current state of the AFL to a new file.
  * Note that the filepath MUST be different to the existing file.
@@ -92,7 +92,7 @@ int afl_save(Afl* afl);
  * @param afl handle of the AFL
  * @return 0 if successful, 1 if AFL is invalid, 2 if the file can't be written to
  */
-int afl_saveNew(Afl* afl, const char* filepath);
+EXPORT int afl_saveNew(Afl* afl, const char* filepath);
 
 /** Imports an AFL Name List into the AFS.
  *
@@ -101,6 +101,6 @@ int afl_saveNew(Afl* afl, const char* filepath);
  * @param permanent If true, the function will overwrite the metadata in the AFS File itself as well.
  * @return 0 if successful, 1 if AFS is invalid, 2 if AFL is invalid.
  */
-int afl_importAfl(Afl* afl, Afs* afs, bool permament);
+EXPORT int afl_importAfl(Afl* afl, Afs* afs, bool permament);
 
 #endif // AFL_H_INCLUDED
