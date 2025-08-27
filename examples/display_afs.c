@@ -16,7 +16,7 @@ char* strlwr(char* str) {
 /** Prints a help text explaining how to use this program
  */
 void printHelp() {
-    puts("display - Display all the entires within the AFS.\n");
+    puts("display - Display all the entries within the AFS.\n");
     puts("arg1 = A path to an AFS file");
 }
 
@@ -109,5 +109,7 @@ int main(int argc, char** argv) {
     }
     puts("+-------+----------------------------------+------------+---------------------+");
 
+    // Of course, we free the no longer used AFS.
+    afs_free(afs);
     return 0;
 }
