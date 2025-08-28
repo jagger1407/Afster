@@ -25,10 +25,14 @@ typedef unsigned int uint;
 
 #define nullptr ((void*)0x00)
 
+#ifdef _WIN32
 #ifdef BUILDING
 #define EXPORT __declspec(dllexport)
 #else
 #define EXPORT __declspec(dllimport)
+#endif
+#else
+#define EXPORT
 #endif
 
 #endif // TYPES_H_INCLUDED
