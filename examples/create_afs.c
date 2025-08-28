@@ -46,6 +46,21 @@ u32 getPaddedSize(int filesize) {
 #ifdef _WIN32
 #include <windows.h>
 
+Timestamp getLastModified(FILETIME* ft) {
+    Timestamp afstime;
+    SYSTEMTIME stUTC, stlocal;
+    FileTimeToSystemTime(ft, &stUTC);
+    SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stlocal);
+    afstime.year = stlocal.wYear;
+    afstime.month = stlocal.wMonth;
+    afstime.day = stlocal.wDay;
+    afstime.hours = stlocal.wHour;
+    afstime.minutes = stlocal.wMinute;
+    afstime.seconds = stlocal.wSecond;
+
+    return afstime;
+}
+
 AfsSubfile* getFiles(char* folderpath, int* filecount) {
     char* rpath = (char*)calloc(PATH_MAX, 1);
     GetFullPathNameA(folderpath, PATH_MAX, rpath, NULL);
@@ -61,54 +76,33 @@ AfsSubfile* getFiles(char* folderpath, int* filecount) {
     } while(FindNextFileA(hfd, &fd) != 0);
     FindClose(hfd);
 
-    char** filelist = (char**)malloc(*filecount * sizeof(char*));
+    AfsSubfile* filelist = (AfsSubfile*)malloc(*filecount * sizeof(AfsSubfile));
     int ifl = 0;
-    char* fpath = (char*)calloc(PATH_MAX, 1);
     hfd = FindFirstFileA(dir, &fd);
     do {
         if(strcmp(fd.cFileName, ".") == 0 || strcmp(fd.cFileName, "..") == 0) continue;
-        snprintf(fpath, PATH_MAX, "%s\\%s", rpath, fd.cFileName);
+        AfsSubfile* cur = &filelist[ifl];
         if((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0) {
-            char* curfile = (char*)calloc(PATH_MAX, 1);
-            strncpy(curfile, fpath, PATH_MAX);
-            filelist[ifl] = curfile;
+            snprintf(cur->path, PATH_MAX, "%s\\%s", rpath, fd.cFileName);
+            cur->size = ((u64)fd.nFileSizeHigh << 32) | fd.nFileSizeLow;
+            cur->paddedSize = getPaddedSize(cur->size);
+            cur->lm = getLastModified(&fd.ftLastAccessTime);
             ifl++;
         }
     } while(FindNextFileA(hfd, &fd) != 0);
 
     FindClose(hfd);
-    free(fpath);
     free(rpath);
     return filelist;
 }
 
-Timestamp getLastModified(char* filepath) {
-    Timestamp afstime;
-    memset(&afstime, 0x00, sizeof(Timestamp));
-    WIN32_FILE_ATTRIBUTE_DATA attr;
-    if(!GetFileAttributesExA(filepath, GetFileExInfoStandard, &attr)) return afstime;
-    FILETIME t = attr.ftLastWriteTime;
-    SYSTEMTIME stUTC, stlocal;
-    FileTimeToSystemTime(&t, &stUTC);
-    SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stlocal);
-    afstime.year = stlocal.wYear;
-    afstime.month = stlocal.wMonth;
-    afstime.day = stlocal.wDay;
-    afstime.hours = stlocal.wHour;
-    afstime.minutes = stlocal.wMinute;
-    afstime.seconds = stlocal.wSecond;
-
-    return afstime;
-}
-
-int indexOf(AfsSubfile* arr, int count, char* searchstr) {
+AfsSubfile* searchFile(AfsSubfile* arr, int count, char* searchstr) {
     for(int i=0;i<count;i++) {
         char* cur = strrchr(arr[i].path, '\\') + 1;
         if(strcmp(cur, searchstr) == 0) {
-            return i;
+            return arr + i;
         }
-    }
-    return -1;
+    } 
 }
 
 #elif __linux__
