@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
         char* outfile = afs_extractEntryToFile(afs, entryId, argv[4]);
         // the function returns the filepath to the extracted entry,
         // so we can just use its return 
-        printf("File extracted to %s.", outfile);
+        printf("File extracted to %s.\n", outfile);
         free(outfile);
     }
 
