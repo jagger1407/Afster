@@ -30,12 +30,69 @@ void printHelp() {
 #ifdef _WIN32
 #include <windows.h>
 
-char** getFiles(char* folderpath) {
-    
+char** getFiles(char* folderpath, int* filecount) {
+    char* rpath = (char*)calloc(PATH_MAX, 1);
+    GetFullPathNameA(folderpath, PATH_MAX, rpath, NULL);
+    WIN32_FIND_DATAA fd;
+    char* dir = (char*)calloc(PATH_MAX, 1);
+    snprintf(dir, PATH_MAX, "%s\\*", rpath);
+    HANDLE hfd = FindFirstFileA(dir, &fd);
+    do {
+        if(strcmp(fd.cFileName, ".") == 0 || strcmp(fd.cFileName, "..") == 0) continue;
+        if((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0) {
+            (*filecount)++;
+        }
+    } while(FindNextFileA(hfd, &fd) != 0);
+    FindClose(hfd);
+
+    char** filelist = (char**)malloc(*filecount * sizeof(char*));
+    int ifl = 0;
+    char* fpath = (char*)calloc(PATH_MAX, 1);
+    hfd = FindFirstFileA(dir, &fd);
+    do {
+        if(strcmp(fd.cFileName, ".") == 0 || strcmp(fd.cFileName, "..") == 0) continue;
+        snprintf(fpath, PATH_MAX, "%s\\%s", rpath, fd.cFileName);
+        if((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0) {
+            char* curfile = (char*)calloc(PATH_MAX, 1);
+            strncpy(curfile, fpath, PATH_MAX);
+            filelist[ifl] = curfile;
+            ifl++;
+        }
+    } while(FindNextFileA(hfd, &fd) != 0);
+
+    FindClose(hfd);
+    free(fpath);
+    free(rpath);
+    return filelist;
 }
 
 Timestamp getLastModified(char* filepath) {
-    
+    Timestamp afstime;
+    memset(&afstime, 0x00, sizeof(Timestamp));
+    WIN32_FILE_ATTRIBUTE_DATA attr;
+    if(!GetFileAttributesExA(filepath, GetFileExInfoStandard, &attr)) return afstime;
+    FILETIME t = attr.ftLastWriteTime;
+    SYSTEMTIME stUTC, stlocal;
+    FileTimeToSystemTime(&t, &stUTC);
+    SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stlocal);
+    afstime.year = stlocal.wYear;
+    afstime.month = stlocal.wMonth;
+    afstime.day = stlocal.wDay;
+    afstime.hours = stlocal.wHour;
+    afstime.minutes = stlocal.wMinute;
+    afstime.seconds = stlocal.wSecond;
+
+    return afstime;
+}
+
+int indexOf(char** arr, int count, char* searchstr) {
+    for(int i=0;i<count;i++) {
+        char* cur = strrchr(arr[i], '\\') + 1;
+        if(strcmp(cur, searchstr) == 0) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 #elif __linux__
@@ -100,8 +157,6 @@ Timestamp getLastModified(char* filepath) {
     return afstime;
 }
 
-#endif
-
 int indexOf(char** arr, int count, char* searchstr) {
     for(int i=0;i<count;i++) {
         char* cur = strrchr(arr[i], '/') + 1;
@@ -110,6 +165,8 @@ int indexOf(char** arr, int count, char* searchstr) {
         }
     } 
 }
+
+#endif
 
 u64 getFilesize(char* filepath) {
     FILE* fp = fopen(filepath, "rb");
