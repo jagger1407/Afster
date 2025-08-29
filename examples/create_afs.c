@@ -61,7 +61,7 @@ Timestamp getLastModified(FILETIME* ft) {
     return afstime;
 }
 
-AfsSubfile* getFiles(char* folderpath, int* filecount) {
+AfsSubfile* getFiles(char* folderpath, int* filecount, Afl* afl) {
     char* rpath = (char*)calloc(PATH_MAX, 1);
     GetFullPathNameA(folderpath, PATH_MAX, rpath, NULL);
     WIN32_FIND_DATAA fd;
@@ -77,32 +77,31 @@ AfsSubfile* getFiles(char* folderpath, int* filecount) {
     FindClose(hfd);
 
     AfsSubfile* filelist = (AfsSubfile*)malloc(*filecount * sizeof(AfsSubfile));
-    int ifl = 0;
+    int entrycount = afl_getEntrycount(afl);
+
     hfd = FindFirstFileA(dir, &fd);
     do {
         if(strcmp(fd.cFileName, ".") == 0 || strcmp(fd.cFileName, "..") == 0) continue;
-        AfsSubfile* cur = &filelist[ifl];
+        
+        AfsSubfile* cur = NULL;
+        for(int i=0;i<entrycount;i++) {
+            if(strcmp(fd.cFileName, afl_getName(afl, i)) == 0) {
+                cur = &filelist[i];
+            }
+        }
+        if(cur == NULL) continue;
+
         if((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0) {
             snprintf(cur->path, PATH_MAX, "%s\\%s", rpath, fd.cFileName);
             cur->size = ((u64)fd.nFileSizeHigh << 32) | fd.nFileSizeLow;
             cur->paddedSize = getPaddedSize(cur->size);
             cur->lm = getLastModified(&fd.ftLastAccessTime);
-            ifl++;
         }
     } while(FindNextFileA(hfd, &fd) != 0);
 
     FindClose(hfd);
     free(rpath);
     return filelist;
-}
-
-AfsSubfile* searchFile(AfsSubfile* arr, int count, char* searchstr) {
-    for(int i=0;i<count;i++) {
-        char* cur = strrchr(arr[i].path, '\\') + 1;
-        if(strcmp(cur, searchstr) == 0) {
-            return arr + i;
-        }
-    } 
 }
 
 #elif __linux__
@@ -124,7 +123,7 @@ Timestamp getLastModified(struct stat* st) {
     return afstime;
 }
 
-AfsSubfile* getFiles(char* folderpath, int* filecount) {
+AfsSubfile* getFiles(char* folderpath, int* filecount, Afl* afl) {
     char* rpath = (char*)calloc(PATH_MAX, 1);
     realpath(folderpath, rpath);
     
@@ -143,11 +142,19 @@ AfsSubfile* getFiles(char* folderpath, int* filecount) {
     }
     rewinddir(dir);
 
+    int entrycount = afl_getEntrycount(afl);
+
     AfsSubfile* filelist = (AfsSubfile*)malloc(*filecount * sizeof(AfsSubfile));
-    int ifl = 0;
     while(cur = readdir(dir), cur != NULL) {
         if(strcmp(cur->d_name, ".") == 0 || strcmp(cur->d_name, "..") == 0) continue;
-        AfsSubfile* cursub = &filelist[ifl];
+        
+        AfsSubfile* cursub = NULL;
+        for(int i=0;i<entrycount;i++) {
+            if(strcmp(cur->d_name, afl_getName(afl, i)) == 0) {
+                cursub = &filelist[i];
+            }
+        }
+        if(cursub == NULL) continue;
         snprintf(cursub->path, PATH_MAX, "%s/%s", rpath, cur->d_name);
 
         struct stat curStat;
@@ -156,7 +163,6 @@ AfsSubfile* getFiles(char* folderpath, int* filecount) {
             cursub->lm = getLastModified(&curStat);
             cursub->size = curStat.st_size;
             cursub->paddedSize = getPaddedSize(cursub->size);
-            ifl++;
         }
     }
 
@@ -165,20 +171,7 @@ AfsSubfile* getFiles(char* folderpath, int* filecount) {
     return filelist;
 }
 
-AfsSubfile* searchFile(AfsSubfile* arr, int count, char* searchstr) {
-    for(int i=0;i<count;i++) {
-        char* cur = strrchr(arr[i].path, '/') + 1;
-        if(strcmp(cur, searchstr) == 0) {
-            return arr + i;
-        }
-    } 
-}
-
 #endif
-
-AfsSubfile** getOrderedSubfiles(AfsSubfile* arr, int count) {
-    
-}
 
 /*
  * This is an example program used to demonstrate how one can use this library.
@@ -215,11 +208,6 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    puts("Getting files...");
-    int fcount = 0;
-    AfsSubfile* files = getFiles(argv[1], &fcount);
-    printf("%d files found.\n", fcount);
-
     puts("Reading AFL...");
     Afl* afl = afl_open(argv[2]);
     int entrycount = afl_getEntrycount(afl);
@@ -230,15 +218,17 @@ int main(int argc, char** argv) {
     int infosize = (entrycount+1) * sizeof(AfsEntryInfo);
     AfsEntryInfo* entinfo = (AfsEntryInfo*)malloc(infosize);
 
-    puts("Ordering files...");
-
+    puts("Getting files...");
+    int fcount = 0;
+    AfsSubfile* files = getFiles(argv[1], &fcount, afl);
+    printf("%d files found.\n", fcount);
 
     u32* curval = (u32*)entinfo;
     puts("Calculating file offsets...");
     u32 curOffset = getPaddedSize(infosize + 8);
     for(int i=0;i<entrycount;i++) {
         char* entry = afl_getName(afl, i);
-        AfsSubfile* file = searchFile(files, fcount, entry);
+        AfsSubfile* file = &files[i];
         entinfo[i].offset = curOffset;
         entinfo[i].size = file->size;
         curOffset += file->paddedSize;
@@ -268,7 +258,7 @@ int main(int argc, char** argv) {
     
     for(int i=0;i<entrycount;i++) {
         fseek(afs->fstream, afs->header.entryinfo[i].offset, SEEK_SET);
-        AfsSubfile* file = searchFile(files, fcount, afs->meta[i].filename);
+        AfsSubfile* file = &files[i];
         u8* buf = (u8*)calloc(file->paddedSize, 1);
         FILE* fp = fopen(file->path, "rb");
         if(fp == NULL) {

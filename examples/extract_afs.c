@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
         if(ret != 0) {
             return ret;
         }
-        printf("AFS extracted to %s.", argv[4]);
+        printf("AFS extracted to %s.\n", argv[4]);
     }
     else {
         // If we only want to extract a single Entry,
