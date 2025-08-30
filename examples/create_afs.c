@@ -76,6 +76,11 @@ AfsSubfile* getFiles(char* folderpath, int* filecount, Afl* afl) {
     } while(FindNextFileA(hfd, &fd) != 0);
     FindClose(hfd);
 
+    if(*filecount == 0) {
+        printf("ERROR: getFiles - No files found in '%s'.\n", folderpath);
+        return NULL;
+    }
+
     AfsSubfile* filelist = (AfsSubfile*)malloc(*filecount * sizeof(AfsSubfile));
     int entrycount = afl_getEntrycount(afl);
 
@@ -141,6 +146,11 @@ AfsSubfile* getFiles(char* folderpath, int* filecount, Afl* afl) {
         }
     }
     rewinddir(dir);
+
+    if(*filecount == 0) {
+        printf("ERROR: getFiles - No files found in '%s'.\n", folderpath);
+        return NULL;
+    }
 
     int entrycount = afl_getEntrycount(afl);
 
@@ -222,6 +232,10 @@ int main(int argc, char** argv) {
     int fcount = 0;
     AfsSubfile* files = getFiles(argv[1], &fcount, afl);
     printf("%d files found.\n", fcount);
+
+    if(files == NULL) {
+        return 1;
+    }
 
     u32* curval = (u32*)entinfo;
     puts("Calculating file offsets...");
