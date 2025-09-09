@@ -1,5 +1,5 @@
 #include "jagger_Afster_Afs.h"
-#include "afs.h"
+#include "../afs.h"
 
 /*
  * Class:     jagger_Afster_Afs

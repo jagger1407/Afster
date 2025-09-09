@@ -9,7 +9,7 @@ import java.io.FileOutputStream;
 public class Afl {
 	static {
 		loadDll("Afster");
-        loadDll("AfsterJava");
+        loadDll("AfsterNative");
     }
 
     private long _handle;
@@ -19,11 +19,17 @@ public class Afl {
     public final int AFL_NAMEBUFFERSIZE = 0x20;
 
     private static void loadDll(String libname) {
-    	try (InputStream in = Afl.class.getResourceAsStream("/" + libname + ".dll")) {
+        if(System.getProperty("os.name").toLowerCase().contains("win")) {
+            libname = "/" + libname + ".dll";
+        } 
+        else {
+            libname = "/lib" + libname + ".so";
+        }
+    	try (InputStream in = Afl.class.getResourceAsStream(libname)) {
     		if(in == null) {
-    			throw new UnsatisfiedLinkError(libname + ".dll was not found.");
+    			throw new UnsatisfiedLinkError(libname + " was not found.");
     		}
-    		File tempLib = new File(System.getProperty("java.io.tmpdir"), libname + ".dll");
+    		File tempLib = new File(System.getProperty("java.io.tmpdir"), libname.substring(1));
     		tempLib.deleteOnExit();
     		try (OutputStream out = new FileOutputStream(tempLib)) {
                 byte[] buf = new byte[4096];
@@ -35,7 +41,7 @@ public class Afl {
     		System.load(tempLib.getAbsolutePath());
     	}
     	catch (IOException ex) {
-    		throw new RuntimeException(libname + ".dll could not be loaded.");
+    		throw new RuntimeException(libname + " could not be loaded.");
     	}
     }
     

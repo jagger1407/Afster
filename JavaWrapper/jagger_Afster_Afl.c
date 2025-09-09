@@ -1,5 +1,5 @@
 #include "jagger_Afster_Afl.h"
-#include "afl.h"
+#include "../afl.h"
 
 /*
  * Class:     jagger_Afster_Afl
