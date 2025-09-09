@@ -13,3 +13,4 @@ examples/*/
 Afster.kdev4
 CMakeLists.txt
 build/
+.vscode
