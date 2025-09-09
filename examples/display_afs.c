@@ -35,8 +35,14 @@ int main(int argc, char** argv) {
     // We then check whether this argument links to an AFS file
     // We take the length of the given filepath
     int len = strlen(argv[1]);
-    char afspath[len];
+    char* afspath = (char*)malloc(len);
     strcpy(afspath, argv[1]);
+    if(strcmp(strlwr(afspath) + len - 4, ".afl") != 0) {
+        puts("ERROR: main - arg1 is not an AFL File.");
+        printHelp();
+        return 1;
+    }
+    free(afspath);
     // strlwr turns the string into all lowercase,
     // then we strcmp the last 4 letters to be ".afs"
     if(strcmp(strlwr(afspath) + len - 4, ".afs") != 0) {

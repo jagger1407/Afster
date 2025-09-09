@@ -151,7 +151,7 @@ int afs_extractFull(Afs* afs, const char* output_folderpath) {
     // In order to ensure each file path will be concatenated correctly,
     // we must ensure the folder path ends with a '/' character.
     int pathlen = strlen(output_folderpath);
-    char folderpath[pathlen+2];
+    char* folderpath = (char*)malloc(pathlen+2);
     memset(folderpath, 0x00, pathlen+2);
     strcpy(folderpath, output_folderpath);
 
@@ -193,10 +193,11 @@ int afs_extractFull(Afs* afs, const char* output_folderpath) {
             // we need to check whether this file has an extension
             char* ext = strrchr(name, '.');
             if(ext != NULL) {
-                char tmp[ext-name+1];
+                char* tmp = (char*)malloc(ext-name+1);
                 strncpy(tmp, name, ext-name);
                 tmp[ext-name] = 0x00;
                 snprintf(filepath + pathlen, AFSMETA_NAMEBUFFERSIZE, "%s(%d)%s", tmp, fcnt++, ext);
+                free(tmp);
             }
             else {
                 char tmp[0x30];
@@ -219,6 +220,7 @@ int afs_extractFull(Afs* afs, const char* output_folderpath) {
 
         fclose(fp);
     }
+    free(folderpath);
     return 0;
 }
 
@@ -373,8 +375,8 @@ int afs_replaceEntriesFromFiles(Afs* afs, int* entries, char** filepaths, int am
     memcpy(oldEntries, afs->header.entryinfo, sizeof(AfsEntryInfo) * (afs->header.entrycount + 1));
 
     // Store the files that are meant to replace the entries
-    u8* fileData[amount_entries];
-    int fileSizes[amount_entries];
+    u8** fileData = (u8**)malloc(amount_entries * sizeof(u8*));
+    int* fileSizes = (int*)malloc(amount_entries * sizeof(int));
 
     bool allEntriesSkipped = true;
     for(int i=0;i<amount_entries;i++) {
@@ -538,7 +540,8 @@ int afs_renameEntry(Afs* afs, int id, const char* new_name, bool permanent) {
 }
 
 AfsEntryMetadata afs_getEntryMetadata(Afs* afs, int id) {
-    AfsEntryMetadata out = {};
+    AfsEntryMetadata out;
+    memset(&out, 0x00, sizeof(AfsEntryMetadata));
 
     if(afs == NULL || afs->fstream == NULL) {
         puts("ERROR: afs_getEntryMetadata - Invalid AFS File.");
@@ -580,7 +583,8 @@ Timestamp afs_getLastModifiedDate(Afs* afs, int id) {
     if(id < 0 || id >= afs->header.entrycount) {
         puts("ERROR: afs_getLastModifiedDate - Entry ID out of range.");
         printf("Entry ID: %d\tAFS Entry Count: %d\n", id, afs->header.entrycount);
-        Timestamp t = {};
+        Timestamp t;
+        memset(&t, 0x00, sizeof(Timestamp));
         return t;
     }
     return afs->meta[id].lastModified;

@@ -36,13 +36,14 @@ int main(int argc, char** argv) {
 
     // Checking whether the given path points to an AFL File
     int len = strlen(argv[1]);
-    char afspath[len];
-    strcpy(afspath, argv[1]);
-    if(strcmp(strlwr(afspath) + len - 4, ".afl") != 0) {
+    char* aflpath = (char*)malloc(len);
+    strcpy(aflpath, argv[1]);
+    if(strcmp(strlwr(aflpath) + len - 4, ".afl") != 0) {
         puts("ERROR: main - arg1 is not an AFL File.");
         printHelp();
         return 1;
     }
+    free(aflpath);
 
     // Now that we know all arguments are there,
     // we can create an AFL Handle with the first argument
