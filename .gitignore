@@ -7,6 +7,13 @@
 *.o
 *.so
 *.dll
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.obj
+*.a
+*.jar
 examples/build.sh
 examples/*/
 
