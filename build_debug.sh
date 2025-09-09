@@ -1,18 +1,27 @@
-CPDIRS=(
-    "/home/jagger/Projects/Tenkaichi/ModFolder_v2"
-    "/mnt/SATAStorage/TenkaichiModding/ModFolder_v2"
-)
-
 PROG=$1
 
-x86_64-w64-mingw32-gcc -shared -g -o build/Debug/Afster.dll afs.c afl.c -Wl,--out-implib,build/Debug/libAfster.dll.a -DBUILDING
-x86_64-w64-mingw32-gcc "examples/$PROG.c" -o "build/Debug/$PROG.exe" -g -Lbuild/Debug -lAfster
+GCC=gcc
+LINUXDIR="./build/linux/Debug"
 
-gcc -shared -fPIC -g -o build/Debug/libAfster.so afs.c afl.c
-gcc "examples/$PROG.c" -o "build/Debug/$PROG.x86_64" -g -Lbuild/Debug -lAfster -Wl,-rpath,'$ORIGIN'
+MINGWGCC=x86_64-w64-mingw32-gcc
+WINDIR="./build/win/Debug"
 
-
-for DIR in "${CPDIRS[@]}"; do
-    cp "$PWD/build/Debug/$PROG.x86_64" "$DIR/tools/AfsCreator/$PROG.x86_64"
-	cp "$PWD/build/Debug/$PROG.exe" "$DIR/tools/AfsCreator/$PROG.exe"
-done
+echo "Compiling libAfster.so..."
+$GCC -shared -fPIC -g -o "$LINUXDIR/libAfster.so" afs.c afl.c
+if [ $MINGWGCC -n ]; then
+    echo "Compiling Afster.dll..."
+    $MINGWGCC -shared -g -o "$WINDIR/Afster.dll" afs.c afl.c "-Wl,--out-implib,$WINDIR/libAfster.dll.a" -DBUILDING
+fi
+if [ $PROG -n ]; then
+    if [ $PROG == "all" ]; then
+        echo "Compiling all examples..."
+        for ex in ./examples/*.c; do
+            $GCC "examples/$PROG.c" -o "$LINUXDIR/$PROG.x86_64" -g "-L$LINUXDIR" -lAfster -Wl,-rpath,'$ORIGIN'
+            [ $MINGWGCC -n ] && $MINGWGCC "examples/$PROG.c" -o "$WINDIR/$PROG.exe" -g "-L$WINDIR" -lAfster
+        done
+    else
+        echo "Compiling $PROG..."
+        $GCC "examples/$PROG.c" -o "$LINUXDIR/$PROG.x86_64" -g "-L$LINUXDIR" -lAfster -Wl,-rpath,'$ORIGIN'
+        [ $MINGWGCC -n ] && $MINGWGCC "examples/$PROG.c" -o "$WINDIR/$PROG.exe" -g "-L$WINDIR" -lAfster
+    fi
+fi
