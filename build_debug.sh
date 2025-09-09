@@ -16,8 +16,8 @@ if [ -n "$PROG" ]; then
     if [ "$PROG" = "all" ]; then
         echo "Compiling all examples..."
         for ex in ./examples/*.c; do
-            $GCC "examples/$PROG.c" -o "$LINUXDIR/$PROG.x86_64" -g "-L$LINUXDIR" -lAfster -Wl,-rpath,'$ORIGIN'
-            [ -n "$MINGWGCC" ] && "$MINGWGCC" "examples/$PROG.c" -o "$WINDIR/$PROG.exe" -g "-L$WINDIR" -lAfster
+            $GCC "$ex" -o "$LINUXDIR/$(basename "$ex" .c).x86_64" -g "-L$LINUXDIR" -lAfster -Wl,-rpath,'$ORIGIN'
+            [ -n "$MINGWGCC" ] && "$MINGWGCC" "$ex" -o "$WINDIR/$(basename "$ex" .c).exe" -g "-L$WINDIR" -lAfster
         done
     else
         echo "Compiling $PROG..."
