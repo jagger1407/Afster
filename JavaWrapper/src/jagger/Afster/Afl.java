@@ -8,8 +8,8 @@ import java.io.FileOutputStream;
 
 public class Afl {
 	static {
-		loadDll("Afster");
-        loadDll("AfsterNative");
+		loadLib("Afster");
+        loadLib("AfsterNative");
     }
 
     private long _handle;
@@ -18,7 +18,7 @@ public class Afl {
     
     public final int AFL_NAMEBUFFERSIZE = 0x20;
 
-    private static void loadDll(String libname) {
+    private static void loadLib(String libname) {
         if(System.getProperty("os.name").toLowerCase().contains("win")) {
             libname = "/" + libname + ".dll";
         } 

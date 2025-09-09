@@ -8,8 +8,8 @@ import java.io.OutputStream;
 
 public class Afs {
 	static {
-		loadDll("Afster");
-        loadDll("AfsterNative");
+		loadLib("Afster");
+        loadLib("AfsterNative");
     }
 
     private long _handle;
@@ -17,7 +17,7 @@ public class Afs {
     private int _entrycount;
     private boolean _permanent;
 
-    private static void loadDll(String libname) {
+    private static void loadLib(String libname) {
         if(System.getProperty("os.name").toLowerCase().contains("win")) {
             libname = "/" + libname + ".dll";
         } 

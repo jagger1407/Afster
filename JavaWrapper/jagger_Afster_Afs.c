@@ -106,7 +106,7 @@ JNIEXPORT jint JNICALL Java_jagger_Afster_Afs_afs_1replaceEntriesFromFiles
         char* file = jni->GetStringUTFChars(env, (jstring)obj, NULL);
         filepaths[i] = file;
     }
-    int* ids = jni->GetIntArrayElements(env, entryIds, NULL);
+    int* ids = (int*)jni->GetIntArrayElements(env, entryIds, NULL);
     jint out = afs_replaceEntriesFromFiles((Afs*)afs, ids, filepaths, amountEntries);
 
     return out;
