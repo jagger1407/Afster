@@ -47,6 +47,24 @@ int afs_getEntrycount(Afs* afs) {
     return afs->header.entrycount;
 }
 
+AfsEntryInfo afs_getEntryinfo(Afs* afs, int id) {
+    AfsEntryInfo out;
+    memset(&out, 0x00, sizeof(AfsEntryInfo));
+    if(afs == NULL || afs->fstream == NULL) {
+        puts("ERROR: afs_getEntryinfo - Invalid AFS pointer (afs or afs->fstream).");
+        return out;
+    }
+
+    if(id < 0 || id > afs->header.entrycount) {
+        puts("ERROR: afs_getEntryinfo - Entry ID out of range.");
+        printf("Entry ID: %d\tAFS entry count: %d\n", id, afs->header.entrycount);
+        return out;
+    }
+
+    memcpy(&out, &afs->header.entryinfo[id], sizeof(AfsEntryInfo));
+    return out;
+}
+
 char* afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
     if(afs == NULL || afs->fstream == NULL) {
         puts("ERROR: afs_extractEntryToFile - Invalid AFS pointer (afs or afs->fstream).");
@@ -136,6 +154,11 @@ u8* afs_extractEntryToBuffer(Afs* afs, int id) {
     fread(buffer, 1, info.size, afs->fstream);
 
     return buffer;
+}
+
+void afs_freeBuffer(void* buffer) {
+    if(buffer)
+        free(buffer);
 }
 
 int afs_extractFull(Afs* afs, const char* output_folderpath) {

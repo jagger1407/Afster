@@ -84,6 +84,14 @@ EXPORT void afs_free(Afs* afs);
  */
 EXPORT int afs_getEntrycount(Afs* afs);
 
+/** Gets the entry info for a specified entry within the AFS. 
+ * 
+ * @param afs The AFS struct
+ * @param id The index of the entry
+ * @return A copy of the AfsEntryInfo struct for the specified entry.
+ */
+EXPORT AfsEntryInfo afs_getEntryinfo(Afs* afs, int id);
+
 /** Extracts a singular file from the AFS to the specified folder.
  *
  * @param afs The AFS struct
@@ -101,6 +109,15 @@ EXPORT char* afs_extractEntryToFile(Afs* afs, int id, const char* output_folderp
  * @return A buffer containing the data of the entry, or NULL if there was an error.
  */
 EXPORT u8* afs_extractEntryToBuffer(Afs* afs, int id);
+
+/** Frees a buffer allocated by one of the functions within this library.
+ *
+ * @param afs The AFS struct
+ * @param id The index of the extracted file
+ * @return A buffer containing the data of the entry, or NULL if there was an error.
+ * @note Only added for usage with the C# Wrapper Library.
+ */
+EXPORT void afs_freeBuffer(void* buffer);
 
 /** Extracts all files within the AFS into a specified folder.
  *
