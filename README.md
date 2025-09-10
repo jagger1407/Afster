@@ -40,11 +40,37 @@ Alternatively, a pre-compiled Afster library can be found in the [releases](http
 #### Java
 An ***experimental*** Afster Wrapper Library for Java can be found in the [releases](https://github.com/jagger1407/Afster/releases/latest). The package name is `jagger.Afster`.
 
+#### C#
+An ***experimental*** Afster Wrapper Library for Java can be found in the [releases](https://github.com/jagger1407/Afster/releases/latest).
+One way to use this inside a C# Project is to extract `AfsterCSharp.zip` into a folder called "lib", then add this to your .csproj file:
+```xml
+<ItemGroup>
+    <None Update="lib/Afster.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>Afster.dll</Link>
+    </None>
+    <None Update="lib/libAfster.so">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>libAfster.so</Link>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="AfsterCSharp">
+      <HintPath>lib/AfsterCSharp.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+```
+After that, the library can be used by writing `using Afster;`.
+
 ## Compiling
 
 In order to compile this library, I made a build script called `build_debug.bat` (Windows) or `build_debug.sh` (Linux).
 
 #### For Linux:
+Dependency: GCC
+
 before you run the build script, open it in a text editor and make sure both `GCC` and `MINGWGCC` are set correctly. 
 If you don't wish to compile for Windows at all, just set `MINGWGCC` to nothing or comment it out.
 
@@ -55,13 +81,28 @@ If you don't wish to compile for Windows at all, just set `MINGWGCC` to nothing 
 - if nothing is specified, only the Afster library will be compiled.
 
 **Java Wrapper Library:**
+Dependencies: GCC (Afster), Java JDK (AfsterJava)
+
 The Java wrapper library has its own `build_debug.sh` with the same syntax as the previous one. To use it, simply do
 ```
 cd JavaWrapper
 ./build_debug.sh
 ```
 
+**C# Wrapper Library:**
+Dependencies: `dotnet-sdk[-version]-bin` package
+
+A helper `build_debug.sh` is included, which checks whether the Afster library exists and automatically compiles & copies it into the directory if it doesn't.  
+
+Alternatively, the C# Wrapper Library can simply be compiled by copying Afster.dll and/or libAfster.so into `CSharpWrapper/`, then running
+```
+cd CSharpWrapper
+dotnet build -c Release
+```
+
 #### For Windows:
+Dependency: GCC or MSVC
+
 before you run the build script, open it in a text editor to set the environment correctly.
 
 - COMPILER
@@ -78,8 +119,21 @@ before you run the build script, open it in a text editor to set the environment
 - if nothing is specified, only the Afster library will be compiled.
 
 **Java Wrapper Library:**
+Dependencies: GCC or MSVC (Afster), Java JDK (AfsterJava)
+
 The Java wrapper library has its own `build_debug.bat` with the same syntax as the previous one. To use it, simply do
 ```
 cd JavaWrapper
 .\build_debug.bat
+```
+
+**C# Wrapper Library:**
+Dependencies: GCC or MSVC (Afster), [.NET SDK](https://dotnet.microsoft.com/download) (AfsterCSharp)
+
+A helper `build_debug.bat` is included, which checks whether the Afster library exists and automatically compiles & copies it into the directory if it doesn't.  
+
+Alternatively, the C# Wrapper Library can simply be compiled by copying Afster.dll into `CSharpWrapper/`, then running
+```
+cd CSharpWrapper
+dotnet build -c Release
 ```

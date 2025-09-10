@@ -17,6 +17,9 @@
 examples/build.sh
 examples/*/
 
+CSharpWrapper/bin
+CSharpWrapper/obj
+
 Afster.kdev4
 CMakeLists.txt
 build/
