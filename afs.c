@@ -8,6 +8,7 @@ Afs* afs_open(char* filePath) {
 
     if(fp == NULL) {
         puts("ERROR: afs_open - AFS Filepath invalid.");
+        puts("Make sure that you have read+write permission for this file.");
         printf("Filepath: %s\n", filePath);
         return NULL;
     }
