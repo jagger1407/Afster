@@ -19,6 +19,6 @@ build/debug build/release:
 	mkdir -p $@
 
 clean:
-	rm -rf build/*
+	find build -name "libAfster.so" -delete
 
 .PHONY: all debug release clean
