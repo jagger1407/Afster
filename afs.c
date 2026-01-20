@@ -99,16 +99,10 @@ char* afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
     // at this point, the given argument might be "/path/to/dir/"
     // or it might be "path/to/dir" (notice the missing slash at the end)
     // we need to ensure both args lead to the same result
-    if(strrchr(outpath, '\\') > strrchr(outpath, '/')) {
-        if(outpath[folderpath_len-1] != '\\') {
-            outpath[folderpath_len] = '\\';
-        }
+    if(outpath[folderpath_len-1] != PATH_SEP) {
+        outpath[folderpath_len] = PATH_SEP;
     }
-    else {
-        if(outpath[folderpath_len-1] != '/') {
-            outpath[folderpath_len] = '/';
-        }
-    }
+
     if(*afs->meta[id].filename != 0x00) {
         strncat(outpath, afs->meta[id].filename, AFSMETA_NAMEBUFFERSIZE);
     }
@@ -133,6 +127,67 @@ char* afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
 
     fclose(outfile);
     free(buffer);
+
+    // Set the correct last modified date
+#ifdef __unix__
+    struct tm lm;
+    memset(&lm, 0x00, sizeof(struct tm));
+    lm.tm_year = afs->meta[id].lastModified.year - 1900;
+    lm.tm_mon = afs->meta[id].lastModified.month - 1;
+    lm.tm_mday = afs->meta[id].lastModified.day;
+    lm.tm_hour = afs->meta[id].lastModified.hours;
+    lm.tm_min = afs->meta[id].lastModified.minutes;
+    lm.tm_sec = afs->meta[id].lastModified.seconds;
+
+    time_t seconds = mktime(&lm);
+    struct timespec times[2];
+    memset(times, 0x00, sizeof(struct timespec)*2);
+    times[0].tv_nsec = UTIME_NOW;
+    times[1].tv_sec = seconds;
+
+    if (utimensat(AT_FDCWD, outpath, times, 0) == -1) {
+        puts("ERROR: afs_extractEntryToFile - Failed to access file metadata.");
+        perror(NULL);
+        return outpath;
+    }
+
+#endif
+#ifdef _WIN32
+    SYSTEMTIME st = {0};
+    FILETIME ft;
+    HANDLE hFile;
+
+    st.wYear = afs->meta[id].lastModified.year;
+    st.wMonth = afs->meta[id].lastModified.month;
+    st.wDay = afs->meta[id].lastModified.day;
+    st.wHour = afs->meta[id].lastModified.hours - 1;
+    st.wMinute = afs->meta[id].lastModified.minutes;
+    st.wSecond = afs->meta[id].lastModified.seconds;
+
+    SystemTimeToFileTime(&st, &ft);
+
+    hFile = CreateFile(
+        outpath,
+        FILE_WRITE_ATTRIBUTES,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        NULL,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL
+    );
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        puts("ERROR: afs_extractEntryToFile - Failed to access file metadata.");
+        return outpath;
+    }
+    if(!SetFileTime(hFile, NULL, NULL, &ft)) {
+        puts("ERROR: afs_extractEntryToFile - SetFileTime failed.");
+        CloseHandle(hFile);
+        return outpath;
+    }
+
+#endif
+
     return outpath;
 }
 
@@ -179,17 +234,8 @@ int afs_extractFull(Afs* afs, const char* output_folderpath) {
     memset(folderpath, 0x00, pathlen+2);
     strcpy(folderpath, output_folderpath);
 
-    // if windows
-    if(strrchr(folderpath, '\\') > strrchr(folderpath, '/')) {
-        if(output_folderpath[pathlen-1] != '\\') {
-            folderpath[pathlen++] = '\\';
-        }
-    }
-    // if linux
-    else {
-        if(output_folderpath[pathlen-1] != '/') {
-            folderpath[pathlen++] = '/';
-        }
+    if(output_folderpath[pathlen-1] != PATH_SEP) {
+        folderpath[pathlen++] = PATH_SEP;
     }
 
     if(access(folderpath, F_OK) != 0) {

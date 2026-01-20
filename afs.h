@@ -9,19 +9,29 @@
 
 #ifdef _WIN32
 
+#include <windows.h>
+
 #include <io.h>
 #define access(x, y) _access(x, y)
 #define F_OK 0
 
+#define PATH_SEP '\\'
+
 #include <direct.h>
 #define mkdir(path) _mkdir(path)
 
-#elif defined(__unix__)
+#endif
+#ifdef __unix__
 
 #include <unistd.h>
 
+#define PATH_SEP '/'
+
 #include <sys/stat.h>
+#include <fcntl.h>
 #define mkdir(x) mkdir(x, 0777)
+
+#include <time.h>
 
 #endif
 
