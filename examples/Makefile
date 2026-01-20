@@ -1,24 +1,30 @@
 CC = gcc
 SRC = $(wildcard *.c)
+BINDIR = ../build/linux
 
 all: debug release
 
 debug: CFLAGS = -g -O0
-debug: $(patsubst %.c,../build/debug/%,$(SRC))
+debug: $(patsubst %.c,$(BINDIR)/debug/%,$(SRC))
 
 release: CFLAGS = -O2
-release: $(patsubst %.c,../build/release/%,$(SRC))
+release: $(patsubst %.c,$(BINDIR)/release/%,$(SRC))
 
-../build/debug/%: %.c
-	$(CC) $(CFLAGS) $< -o $@ -L../build/debug -lAfster -Wl,-rpath,'$$ORIGIN'
+$(BINDIR)/debug/%: %.c | $(BINDIR)/debug/libAfster.so
+	$(CC) $(CFLAGS) $< -o $@ -L$(BINDIR)/debug -lAfster -Wl,-rpath,'$$ORIGIN'
 
-../build/release/%: %.c
-	$(CC) $(CFLAGS) $< -o $@ -L../build/release -lAfster -Wl,-rpath,'$$ORIGIN'
+$(BINDIR)/release/%: %.c | $(BINDIR)/release/libAfster.so
+	$(CC) $(CFLAGS) $< -o $@ -L$(BINDIR)/release -lAfster -Wl,-rpath,'$$ORIGIN'
 
+$(BINDIR)/debug/libAfster.so:
+	cd .. && make debug && pwd
+
+$(BINDIR)/release/libAfster.so:
+	cd .. && make release && pwd
 
 clean:
-	find ../build/debug -type f -not -name "libAfster.so" -delete
-	find ../build/release -type f -not -name "libAfster.so" -delete
+	find $(BINDIR)/debug -type f -not -name "libAfster.so" -delete
+	find $(BINDIR)/release -type f -not -name "libAfster.so" -delete
 
 
 
