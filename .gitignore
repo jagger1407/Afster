@@ -15,6 +15,7 @@
 *.a
 *.jar
 *.sln
+*.windows
 examples/build.sh
 examples/*/
 
