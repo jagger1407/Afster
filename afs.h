@@ -137,36 +137,6 @@ EXPORT void afs_freeBuffer(void* buffer);
  */
 EXPORT int afs_extractFull(Afs* afs, const char* output_folderpath);
 
-/** Replaces an entry within the AFS without resizing
- * @note DESIGNED FOR INTERNAL USE ONLY
- *
- * @param afs The AFS struct
- * @param id The index of the entry
- * @param data Byte Array containing the new entry data
- * @param data_size Size of the data
- * @return 0 if successful, 1 if AFS is invalid, 2 if entry ID is out of range, 3 if data array is invalid (NULL or zero size).
- */
-int _afs_replaceEntry_noResize(Afs* afs, int id, u8* data, int data_size);
-
-/** Calculates the reserved space for this entry.
- * @note DESIGNED FOR INTERNAL USE ONLY
- *
- * @param new_size The new size of the entry
- * @return The amount of space that should be reserved for this entry.
- */
-int _afs_calcReservedSpace(int new_size);
-
-/** Clears and resizes the reserved space for the specified entry.
- * This will change each offset for following entries!
- * @note DESIGNED FOR INTERNAL USE ONLY
- *
- * @param afs The AFS struct
- * @param id The index of the entry
- * @param new_size new reserved space for the entry, will be expanded to be 16-Byte aligned.
- * @return 0 if successful, 1 if AFS is invalid, 2 if entry ID is out of range, 3 if AFS_RESERVEDSPACEBUFFER isn't 16-Byte aligned.
- */
-int _afs_resizeEntrySpace(Afs* afs, int id, int new_size);
-
 /** Replaces an entry within the AFS.
  *
  * @param afs The AFS struct

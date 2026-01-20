@@ -1,5 +1,206 @@
 #include "afs.h"
 
+/** Puts the given Timestamp into the
+ * 'Last Modified' time for the given file.
+ *  @note DESIGNED FOR INTERNAL USE ONLY
+ *
+ * @param filepath The path to the file whose date you want to change
+ * @param ts The new 'Last Modified' timestamp
+ * @return 0 if successful, 1 if the path is invalid, 2 if there was an error with setting the date.
+ */
+int _afs_ApplyTimestamp(char* filepath, Timestamp ts) {
+    if(filepath == NULL || *filepath == 0x00) return 1;
+
+    #ifdef __unix__
+    struct tm lm;
+    memset(&lm, 0x00, sizeof(struct tm));
+    lm.tm_year = ts.year - 1900;
+    lm.tm_mon = ts.month - 1;
+    lm.tm_mday = ts.day;
+    lm.tm_hour = ts.hours;
+    lm.tm_min = ts.minutes;
+    lm.tm_sec = ts.seconds;
+
+    time_t seconds = mktime(&lm);
+    struct timespec times[2];
+    memset(times, 0x00, sizeof(struct timespec)*2);
+    times[0].tv_nsec = UTIME_NOW;
+    times[1].tv_sec = seconds;
+
+    if (utimensat(AT_FDCWD, filepath, times, 0) == -1) {
+        puts("ERROR: afs_extractEntryToFile - Failed to access file metadata.");
+        perror(NULL);
+        return 2;
+    }
+
+    #endif
+    #ifdef _WIN32
+    SYSTEMTIME st = {0};
+    FILETIME ft;
+    HANDLE hFile;
+
+    st.wYear = ts.year;
+    st.wMonth = ts.month;
+    st.wDay = ts.day;
+    st.wHour = ts.hours - 1;
+    st.wMinute = ts.minutes;
+    st.wSecond = ts.seconds;
+
+    SystemTimeToFileTime(&st, &ft);
+
+    hFile = CreateFile(
+        filepath,
+        FILE_WRITE_ATTRIBUTES,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        NULL,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL
+    );
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        puts("ERROR: afs_extractEntryToFile - Failed to access file metadata.");
+        return 2;
+    }
+    if(!SetFileTime(hFile, NULL, NULL, &ft)) {
+        puts("ERROR: afs_extractEntryToFile - SetFileTime failed.");
+        CloseHandle(hFile);
+        return 2;
+    }
+    #endif
+
+    return 0;
+}
+
+/** Calculates the reserved space for this entry.
+ * @note DESIGNED FOR INTERNAL USE ONLY
+ *
+ * @param new_size The new size of the entry
+ * @return The amount of space that should be reserved for this entry.
+ */
+int _afs_calcReservedSpace(int new_size) {
+    if(AFS_RESERVEDSPACEBUFFER % 0x10 != 0) {
+        return -3;
+    }
+
+    int newReservedSpace = (new_size / AFS_RESERVEDSPACEBUFFER + 1) * AFS_RESERVEDSPACEBUFFER;
+
+    return newReservedSpace;
+}
+
+/** Replaces an entry within the AFS without resizing
+ * @note DESIGNED FOR INTERNAL USE ONLY
+ *
+ * @param afs The AFS struct
+ * @param id The index of the entry
+ * @param data Byte Array containing the new entry data
+ * @param data_size Size of the data
+ * @return 0 if successful, 1 if AFS is invalid, 2 if entry ID is out of range, 3 if data array is invalid (NULL or zero size).
+ */
+int _afs_replaceEntry_noResize(Afs* afs, int id, u8* data, int data_size) {
+    if(afs == NULL || afs->fstream == NULL) {
+        return 1;
+    }
+    if(id < 0 || id >= afs->header.entrycount) {
+        return 2;
+    }
+    if(data == NULL || data_size <= 0) {
+        return 3;
+    }
+
+    int reservedSpace = afs->header.entryinfo[id+1].offset - afs->header.entryinfo[id].offset;
+
+    u8* newData = (u8*)malloc(reservedSpace);
+    memset(newData, 0x00, reservedSpace);
+    memcpy(newData, data, data_size);
+
+    fseek(afs->fstream, afs->header.entryinfo[id].offset, SEEK_SET);
+    fwrite(newData, 1, reservedSpace, afs->fstream);
+    int entryinfoOffset = 8 + (sizeof(AfsEntryInfo) * id); // 8 = sizeof(identifier) + sizeof(entrycount)
+    fseek(afs->fstream, entryinfoOffset, SEEK_SET);
+    afs->header.entryinfo[id].size = data_size;
+    fwrite(afs->header.entryinfo + id, sizeof(AfsEntryInfo), 1, afs->fstream);
+
+    afs->meta[id].filesize = data_size;
+    fseek(afs->fstream, afs->header.entryinfo[afs->header.entrycount].offset + sizeof(AfsEntryMetadata) * id, SEEK_SET);
+    fwrite(afs->meta + id, sizeof(AfsEntryMetadata), 1, afs->fstream);
+
+    fseek(afs->fstream, 0, SEEK_SET);
+    free(newData);
+    return 0;
+}
+
+/** Clears and resizes the reserved space for the specified entry.
+ * This will change each offset for following entries!
+ * @note DESIGNED FOR INTERNAL USE ONLY
+ *
+ * @param afs The AFS struct
+ * @param id The index of the entry
+ * @param new_size new reserved space for the entry, will be expanded to be 16-Byte aligned.
+ * @return 0 if successful, 1 if AFS is invalid, 2 if entry ID is out of range, 3 if AFS_RESERVEDSPACEBUFFER isn't 16-Byte aligned.
+ */
+int _afs_resizeEntrySpace(Afs* afs, int id, int new_size) {
+    if(afs == NULL || afs->fstream == NULL) {
+        return 1;
+    }
+    if(id < 0 || id >= afs->header.entrycount) {
+        return 2;
+    }
+
+    int oldSize = afs->header.entryinfo[id].size;
+    afs->header.entryinfo[id].size = new_size;
+
+    int newReservedSpace = _afs_calcReservedSpace(new_size);
+    if(newReservedSpace < 0) {
+        return -newReservedSpace;
+    }
+    u8* buffer = (u8*)malloc(newReservedSpace);
+    memset(buffer, 0x00, newReservedSpace);
+
+    // This variable is the starting offset for the back half of the AFS
+    int oldOffsetNextEntry = afs->header.entryinfo[id+1].offset;
+
+    // This loop updates each element in the entryinfo array with their new offsets.
+    int curOffset = afs->header.entryinfo[id].offset + newReservedSpace;
+    for(int i=id + 1; i < afs->header.entrycount; i++) {
+        int reserved = afs->header.entryinfo[i+1].offset - afs->header.entryinfo[i].offset;
+        afs->header.entryinfo[i].offset = curOffset;
+        curOffset += reserved;
+    }
+    // Metadata
+    afs->header.entryinfo[afs->header.entrycount].offset = curOffset;
+
+    // Consider the AFS as one long line of data.
+    // This is splitting the AFS exactly where the entry is,
+    // Creating a Front part and a back part.
+
+    // This is the size of that back part
+    fseek(afs->fstream, oldOffsetNextEntry, SEEK_SET);
+    int backSize = ftell(afs->fstream);
+    fseek(afs->fstream, 0, SEEK_END);
+    backSize = ftell(afs->fstream) - backSize;
+
+    // This here reads the back part into a buffer
+    u8* back = (u8*)malloc(backSize);
+    fseek(afs->fstream, oldOffsetNextEntry, SEEK_SET);;
+    fread(back, 1, backSize, afs->fstream);
+
+    // This here writes the new space to the file
+    fseek(afs->fstream, afs->header.entryinfo[id].offset, SEEK_SET);
+    fwrite(buffer, 1, newReservedSpace, afs->fstream);
+    // This here writes the back part to the file
+    fwrite(back, 1, backSize, afs->fstream);
+
+    // This here writes the new entry info into the header.
+    fseek(afs->fstream, 8, SEEK_SET);
+    fwrite(afs->header.entryinfo, sizeof(AfsEntryInfo), afs->header.entrycount + 1, afs->fstream);
+
+    free(back);
+    free(buffer);
+    return 0;
+}
+
+
 Afs* afs_open(char* filePath) {
     if(filePath == NULL || *filePath == '\0') {
         return NULL;
@@ -129,64 +330,7 @@ char* afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
     free(buffer);
 
     // Set the correct last modified date
-#ifdef __unix__
-    struct tm lm;
-    memset(&lm, 0x00, sizeof(struct tm));
-    lm.tm_year = afs->meta[id].lastModified.year - 1900;
-    lm.tm_mon = afs->meta[id].lastModified.month - 1;
-    lm.tm_mday = afs->meta[id].lastModified.day;
-    lm.tm_hour = afs->meta[id].lastModified.hours;
-    lm.tm_min = afs->meta[id].lastModified.minutes;
-    lm.tm_sec = afs->meta[id].lastModified.seconds;
-
-    time_t seconds = mktime(&lm);
-    struct timespec times[2];
-    memset(times, 0x00, sizeof(struct timespec)*2);
-    times[0].tv_nsec = UTIME_NOW;
-    times[1].tv_sec = seconds;
-
-    if (utimensat(AT_FDCWD, outpath, times, 0) == -1) {
-        puts("ERROR: afs_extractEntryToFile - Failed to access file metadata.");
-        perror(NULL);
-        return outpath;
-    }
-
-#endif
-#ifdef _WIN32
-    SYSTEMTIME st = {0};
-    FILETIME ft;
-    HANDLE hFile;
-
-    st.wYear = afs->meta[id].lastModified.year;
-    st.wMonth = afs->meta[id].lastModified.month;
-    st.wDay = afs->meta[id].lastModified.day;
-    st.wHour = afs->meta[id].lastModified.hours - 1;
-    st.wMinute = afs->meta[id].lastModified.minutes;
-    st.wSecond = afs->meta[id].lastModified.seconds;
-
-    SystemTimeToFileTime(&st, &ft);
-
-    hFile = CreateFile(
-        outpath,
-        FILE_WRITE_ATTRIBUTES,
-        FILE_SHARE_READ | FILE_SHARE_WRITE,
-        NULL,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        NULL
-    );
-
-    if (hFile == INVALID_HANDLE_VALUE) {
-        puts("ERROR: afs_extractEntryToFile - Failed to access file metadata.");
-        return outpath;
-    }
-    if(!SetFileTime(hFile, NULL, NULL, &ft)) {
-        puts("ERROR: afs_extractEntryToFile - SetFileTime failed.");
-        CloseHandle(hFile);
-        return outpath;
-    }
-
-#endif
+    _afs_ApplyTimestamp(outpath, afs->meta[id].lastModified);
 
     return outpath;
 }
@@ -289,116 +433,12 @@ int afs_extractFull(Afs* afs, const char* output_folderpath) {
         free(buffer);
 
         fclose(fp);
+        // Apply the Timestamp from the metadata section
+        _afs_ApplyTimestamp(filepath, meta.lastModified);
     }
     free(folderpath);
     return 0;
 }
-
-int _afs_replaceEntry_noResize(Afs* afs, int id, u8* data, int data_size) {
-    if(afs == NULL || afs->fstream == NULL) {
-        return 1;
-    }
-    if(id < 0 || id >= afs->header.entrycount) {
-        return 2;
-    }
-    if(data == NULL || data_size <= 0) {
-        return 3;
-    }
-
-    int reservedSpace = afs->header.entryinfo[id+1].offset - afs->header.entryinfo[id].offset;
-
-    u8* newData = (u8*)malloc(reservedSpace);
-    memset(newData, 0x00, reservedSpace);
-    memcpy(newData, data, data_size);
-
-    fseek(afs->fstream, afs->header.entryinfo[id].offset, SEEK_SET);
-    fwrite(newData, 1, reservedSpace, afs->fstream);
-    int entryinfoOffset = 8 + (sizeof(AfsEntryInfo) * id); // 8 = sizeof(identifier) + sizeof(entrycount)
-    fseek(afs->fstream, entryinfoOffset, SEEK_SET);
-    afs->header.entryinfo[id].size = data_size;
-    fwrite(afs->header.entryinfo + id, sizeof(AfsEntryInfo), 1, afs->fstream);
-
-    afs->meta[id].filesize = data_size;
-    fseek(afs->fstream, afs->header.entryinfo[afs->header.entrycount].offset + sizeof(AfsEntryMetadata) * id, SEEK_SET);
-    fwrite(afs->meta + id, sizeof(AfsEntryMetadata), 1, afs->fstream);
-
-    fseek(afs->fstream, 0, SEEK_SET);
-    free(newData);
-    return 0;
-}
-
-int _afs_calcReservedSpace(int new_size) {
-if(AFS_RESERVEDSPACEBUFFER % 0x10 != 0) {
-        return -3;
-    }
-
-    int newReservedSpace = (new_size / AFS_RESERVEDSPACEBUFFER + 1) * AFS_RESERVEDSPACEBUFFER;
-
-    return newReservedSpace;
-}
-
-
-int _afs_resizeEntrySpace(Afs* afs, int id, int new_size) {
-    if(afs == NULL || afs->fstream == NULL) {
-        return 1;
-    }
-    if(id < 0 || id >= afs->header.entrycount) {
-        return 2;
-    }
-
-    int oldSize = afs->header.entryinfo[id].size;
-    afs->header.entryinfo[id].size = new_size;
-
-    int newReservedSpace = _afs_calcReservedSpace(new_size);
-    if(newReservedSpace < 0) {
-        return -newReservedSpace;
-    }
-    u8* buffer = (u8*)malloc(newReservedSpace);
-    memset(buffer, 0x00, newReservedSpace);
-
-    // This variable is the starting offset for the back half of the AFS
-    int oldOffsetNextEntry = afs->header.entryinfo[id+1].offset;
-
-    // This loop updates each element in the entryinfo array with their new offsets.
-    int curOffset = afs->header.entryinfo[id].offset + newReservedSpace;
-    for(int i=id + 1; i < afs->header.entrycount; i++) {
-        int reserved = afs->header.entryinfo[i+1].offset - afs->header.entryinfo[i].offset;
-        afs->header.entryinfo[i].offset = curOffset;
-        curOffset += reserved;
-    }
-    // Metadata
-    afs->header.entryinfo[afs->header.entrycount].offset = curOffset;
-
-    // Consider the AFS as one long line of data.
-    // This is splitting the AFS exactly where the entry is,
-    // Creating a Front part and a back part.
-
-    // This is the size of that back part
-    fseek(afs->fstream, oldOffsetNextEntry, SEEK_SET);
-    int backSize = ftell(afs->fstream);
-    fseek(afs->fstream, 0, SEEK_END);
-    backSize = ftell(afs->fstream) - backSize;
-
-    // This here reads the back part into a buffer
-    u8* back = (u8*)malloc(backSize);
-    fseek(afs->fstream, oldOffsetNextEntry, SEEK_SET);;
-    fread(back, 1, backSize, afs->fstream);
-
-    // This here writes the new space to the file
-    fseek(afs->fstream, afs->header.entryinfo[id].offset, SEEK_SET);
-    fwrite(buffer, 1, newReservedSpace, afs->fstream);
-    // This here writes the back part to the file
-    fwrite(back, 1, backSize, afs->fstream);
-
-    // This here writes the new entry info into the header.
-    fseek(afs->fstream, 8, SEEK_SET);
-    fwrite(afs->header.entryinfo, sizeof(AfsEntryInfo), afs->header.entrycount + 1, afs->fstream);
-
-    free(back);
-    free(buffer);
-    return 0;
-}
-
 
 int afs_replaceEntry(Afs* afs, int id, u8* data, int data_size) {
     if(afs == NULL || afs->fstream == NULL) {
