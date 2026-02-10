@@ -29,7 +29,16 @@ $(BINDIR)/release/$(TARGET): $(SRC) | $(BINDIR)/release
 $(BINDIR)/debug $(BINDIR)/release:
 	mkdir -p $@
 
-clean:
-	find build -name $(TARGET) -delete
+examples: examples_debug examples_release
 
-.PHONY: all debug release clean
+
+examples_debug: $(BINDIR)/debug/$(TARGET)
+	$(MAKE) -C examples debug
+
+examples_release: $(BINDIR)/release/$(TARGET)
+	$(MAKE) -C examples release
+
+clean:
+	rm -rf build
+
+.PHONY: all debug release examples examples_debug examples_release clean

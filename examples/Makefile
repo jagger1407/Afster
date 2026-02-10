@@ -16,12 +16,6 @@ $(BINDIR)/debug/%: %.c | $(BINDIR)/debug/libAfster.so
 $(BINDIR)/release/%: %.c | $(BINDIR)/release/libAfster.so
 	$(CC) $(CFLAGS) $< -o $@ -L$(BINDIR)/release -lAfster -Wl,-rpath,'$$ORIGIN'
 
-$(BINDIR)/debug/libAfster.so:
-	cd .. && make debug && pwd
-
-$(BINDIR)/release/libAfster.so:
-	cd .. && make release && pwd
-
 clean:
 	find $(BINDIR)/debug -type f -not -name "libAfster.so" -delete
 	find $(BINDIR)/release -type f -not -name "libAfster.so" -delete
