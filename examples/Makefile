@@ -11,7 +11,7 @@ release: CFLAGS = -O2
 release: $(patsubst %.c,$(BINDIR)/release/%,$(SRC))
 
 $(BINDIR)/debug/%: %.c | $(BINDIR)/debug/libAfster.so
-	$(CC) $(CFLAGS) $< -o $@ -L$(BINDIR)/debug -lAfster -Wl,-rpath,'$$ORIGIN'
+	$(CC) $(CFLAGS) ../afl.c ../afs.c $< -o $@
 
 $(BINDIR)/release/%: %.c | $(BINDIR)/release/libAfster.so
 	$(CC) $(CFLAGS) $< -o $@ -L$(BINDIR)/release -lAfster -Wl,-rpath,'$$ORIGIN'
