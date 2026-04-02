@@ -44,7 +44,8 @@ int main(int argc, char** argv) {
     }
     // Checking whether the given path points to an AFS File
     int len = strlen(argv[1]);
-    char afspath[len];
+    char afspath[len+1];
+    afspath[len] = 0x00;
     strcpy(afspath, argv[1]);
     if(strcmp(strlwr(afspath) + len - 4, ".afs") != 0) {
         puts("ERROR: main - arg1 is not an AFS File.");
