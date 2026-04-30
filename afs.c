@@ -255,6 +255,42 @@ void afs_free(Afs* afs) {
     afs = NULL;
 }
 
+int afs_save(Afs* afs, char* filepath) {
+    if(afs == NULL) {
+        _afs_LogError("ERROR: afs_save - Invalid AFS pointer");
+        return 1;
+    }
+    if(filepath == NULL || *filepath == 0x00) {
+        _afs_LogError("ERROR: afs_save - Invalid filepath.");
+        return 2;
+    }
+    FILE* fp = fopen(filepath, "w+b");
+    if(fp == NULL) {
+        _afs_LogErrorF( "ERROR: afs_save - Couldn't create file.\n" \
+                        "Filepath: '%s'\n", filepath);
+        perror(NULL);
+        return 3;
+    }
+
+    if(*afs->header.identifier != 'A' || (afs->header.entrycount > 0 && afs->header.entryinfo == NULL)) {
+        _afs_LogError("ERROR: afs_save - afs->header is invalid.");
+        return 3;
+    }
+    if(afs->meta == NULL) {
+        _afs_LogError("ERROR: afs_save - afs->meta is invalid.");
+        return 3;
+    }
+
+    fwrite(&afs->header, 1, 8, fp);
+    fwrite(afs->header.entryinfo, sizeof(AfsEntryInfo), afs->header.entrycount+1, fp);
+    fseek(fp, afs->header.entryinfo[afs->header.entrycount].offset, SEEK_SET);
+    fwrite(afs->meta, sizeof(AfsEntryMetadata), afs->header.entrycount, fp);
+
+    fclose(fp);
+
+    return 0;
+}
+
 int afs_getEntrycount(Afs* afs) {
     return afs->header.entrycount;
 }

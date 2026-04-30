@@ -91,6 +91,20 @@ EXPORT Afs* afs_open(char* filePath);
  */
 EXPORT void afs_free(Afs* afs);
 
+
+/** Saves the current state of the AFS Struct as a new AFS file.
+ * @note Filedata must be added manually.
+ *
+ * @param afs Handle to the AFS Struct
+ * @param filepath Path to what this file should be stored as.
+ *
+ * @retval 0 if the operation was successful.
+ * @retval 1 if the AFS handle is invalid.
+ * @retval 2 if the filepath is invalid.
+ * @retval 3 if the file couldn't be created.
+ */
+EXPORT int afs_save(Afs* afs, char* filepath);
+
 /** Gets the total amount of entries within this AFS. 
  * 
  * @param afs The AFS struct
@@ -137,8 +151,6 @@ EXPORT u8* afs_extractEntryToBuffer(Afs* afs, int id);
  *
  * @param afs The AFS struct
  * @param id The index of the extracted file
- * @retval A buffer containing the data of the entry.
- * @retval NULL if there was an error.
  * @note Only added for usage with the C# Wrapper Library.
  */
 EXPORT void afs_freeBuffer(void* buffer);
