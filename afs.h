@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <limits.h>
+#include <stdarg.h>
+
 #include "types.h"
 
 #ifdef _WIN32
@@ -70,14 +73,15 @@ typedef struct {
 typedef struct {
     AfsHeader header;
     AfsEntryMetadata* meta;
-    //AfsEntryInfo* sortedEntries;
     FILE* fstream;
 } Afs;
 
 /** opens an AFS file and builds the handle for it.
  *
  * @param filePath path the the AFS file
- * @return Handle to the constructed AFS struct, or NULL if it failed.
+ *
+ * @retval Handle to the constructed AFS struct.
+ * @retval NULL if it failed.
  */
 EXPORT Afs* afs_open(char* filePath);
 
@@ -99,6 +103,7 @@ EXPORT int afs_getEntrycount(Afs* afs);
  * @param afs The AFS struct
  * @param id The index of the entry
  * @return A copy of the AfsEntryInfo struct for the specified entry.
+ * Zeroed out if an error occurs.
  */
 EXPORT AfsEntryInfo afs_getEntryinfo(Afs* afs, int id);
 
@@ -106,17 +111,25 @@ EXPORT AfsEntryInfo afs_getEntryinfo(Afs* afs, int id);
  *
  * @param afs The AFS struct
  * @param id The index of the extracted file
- * @param output_folderpath The path to the folder where the file should be extracted to.
- * @return If successful, the filepath to the extracted file will be returned, NULL if failed.
- * @note The return string must be manually freed!
+ * @param folderpath The path to the folder where the file should be extracted to.
+ * @param filepath (Optional) if a pointer is given, the filepath of the output file will be copied.
+ *
+ * @retval 0 on successful extraction.
+ * @retval 1 if the AFS Handle or file stream is NULL.
+ * @retval 2 if the Entry ID is out of range.
+ * @retval 3 if the folderpath is invalid.
+ * @retval 4 if the file couldn't be created.
+ * @note The filepath buffer must be large enough to store the filepath
  */
-EXPORT char* afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath);
+EXPORT int afs_extractEntryToFile(Afs* afs, int id, const char* folderpath, char* filepath);
 
 /** Extracts a singular file from the AFS to the specified folder.
  *
  * @param afs The AFS struct
  * @param id The index of the extracted file
- * @return A buffer containing the data of the entry, or NULL if there was an error.
+ *
+ * @retval A buffer containing the data of the entry.
+ * @retval NULL if there was an error.
  */
 EXPORT u8* afs_extractEntryToBuffer(Afs* afs, int id);
 
@@ -124,7 +137,8 @@ EXPORT u8* afs_extractEntryToBuffer(Afs* afs, int id);
  *
  * @param afs The AFS struct
  * @param id The index of the extracted file
- * @return A buffer containing the data of the entry, or NULL if there was an error.
+ * @retval A buffer containing the data of the entry.
+ * @retval NULL if there was an error.
  * @note Only added for usage with the C# Wrapper Library.
  */
 EXPORT void afs_freeBuffer(void* buffer);
@@ -132,10 +146,12 @@ EXPORT void afs_freeBuffer(void* buffer);
 /** Extracts all files within the AFS into a specified folder.
  *
  * @param afs The AFS struct
- * @param output_folderpath The path to the folder where the AFS should be extracted to.
- * @return 0 if successful, 1 if AFS is invalid, 2 if output_folderpath is invalid.
+ * @param folderpath The path to the folder where the AFS should be extracted to.
+ * @retval 0 on successful extraction
+ * @retval 1 if AFS is invalid
+ * @retval 2 if folderpath is invalid.
  */
-EXPORT int afs_extractFull(Afs* afs, const char* output_folderpath);
+EXPORT int afs_extractFull(Afs* afs, const char* folderpath);
 
 /** Replaces an entry within the AFS.
  *
@@ -143,7 +159,12 @@ EXPORT int afs_extractFull(Afs* afs, const char* output_folderpath);
  * @param id The index of the entry
  * @param data Byte Array containing the new entry data
  * @param data_size Size of the data
- * @return 0 if successful, 1 if AFS is invalid, 2 if entry ID is out of range, 3 if data array is invalid (NULL or zero size), 4 if resizing was necessary but failed.
+ *
+ * @retval 0 if the operation was successful.
+ * @retval 1 if the AFS is invalid.
+ * @retval 2 if the entry ID is out of range.
+ * @retval 3 if the data array is invalid (NULL or zero size).
+ * @retval 4 if resizing was necessary but failed.
  */
 EXPORT int afs_replaceEntry(Afs* afs, int id, u8* data, int data_size);
 
@@ -155,7 +176,10 @@ EXPORT int afs_replaceEntry(Afs* afs, int id, u8* data, int data_size);
  * @param amount_entries The total amount of entries that should be replaced.
  * @note entries and filepaths should have the same size.
  *
- * @return 0 if successful, 1 if AFS is invalid, 2 if there was an issue with the passed arrays, 3 if amount_entries is invalid.
+ * @retval 0 if the operation was successful.
+ * @retval 1 if the AFS is invalid.
+ * @retval 2 if there was an issue with the passed arrays.
+ * @retval 3 if amount_entries is invalid.
  */
 EXPORT int afs_replaceEntriesFromFiles(Afs* afs, int* entries, char** filepaths, int amount_entries);
 
@@ -165,14 +189,18 @@ EXPORT int afs_replaceEntriesFromFiles(Afs* afs, int* entries, char** filepaths,
  * @param id The index of the entry
  * @param new_name The new name for the entry
  * @param permanent If true, the function will overwrite the metadata in the AFS File itself as well.
- * @return 0 if successful, 1 if AFS is invalid, 2 if entry ID is out of range, 3 if new_name is invalid.
+ *
+ * @retval 0 if the operation was successful.
+ * @retval 1 if the AFS is invalid.
+ * @retval 2 if entry ID is out of range.
+ * @retval 3 if new_name is invalid.
  */
 EXPORT int afs_renameEntry(Afs* afs, int id, const char* new_name, bool permanent);
 
 /** Gets the metadata of a given entry.
  * @param afs The AFS struct
  * @param id The index of the entry
- * @return A copy of the AfsEntryMetaData struct of the entry, or an empty one if the ID is invalid.
+ * @return A copy of the AfsEntryMetaData struct of the entry, or an empty struct if the ID is invalid.
  */
 EXPORT AfsEntryMetadata afs_getEntryMetadata(Afs* afs, int id);
 
@@ -181,7 +209,10 @@ EXPORT AfsEntryMetadata afs_getEntryMetadata(Afs* afs, int id);
  * @param id The index of the entry
  * @param new_meta Metadata that will replace the current one
  * @param permanent If true, the function will overwrite the metadata in the AFS File itself as well.
- * @return 0 if successful, 1 if AFS is invalid, 2 if entry ID is out of range
+ *
+ * @retval 0 if successful.
+ * @retval 1 if the AFS is invalid.
+ * @retval 2 if the entry ID is out of range.
  */
 EXPORT int afs_setEntryMetadata(Afs* afs, int id, AfsEntryMetadata new_meta, bool permanent);
 
@@ -195,10 +226,11 @@ EXPORT int afs_setEntryMetadata(Afs* afs, int id, AfsEntryMetadata new_meta, boo
 EXPORT Timestamp afs_getLastModifiedDate(Afs* afs, int id);
 
 /** Converts a Timestamp struct to a string.
- *  Note that a char* is allocated here, and must be manually freed.
  *
  * @param t The Timestamp to be converted.
  * @return C-Style string containing the date.
+ *
+ * @note The output string must be manually freed!
  */
 EXPORT char* afs_timestampToString(Timestamp t);
 

@@ -1,5 +1,15 @@
 #include "afs.h"
 
+void _afs_LogError(const char* message) {
+    fprintf(stderr, "%s\n", message);
+}
+void _afs_LogErrorF(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+}
+
 /** Puts the given Timestamp into the
  * 'Last Modified' time for the given file.
  *  @note DESIGNED FOR INTERNAL USE ONLY
@@ -28,7 +38,7 @@ int _afs_ApplyTimestamp(char* filepath, Timestamp ts) {
     times[1].tv_sec = seconds;
 
     if (utimensat(AT_FDCWD, filepath, times, 0) == -1) {
-        puts("ERROR: afs_extractEntryToFile - Failed to access file metadata.");
+        _afs_LogError("ERROR: afs_extractEntryToFile - Failed to access file metadata.");
         perror(NULL);
         return 2;
     }
@@ -59,11 +69,11 @@ int _afs_ApplyTimestamp(char* filepath, Timestamp ts) {
     );
 
     if (hFile == INVALID_HANDLE_VALUE) {
-        puts("ERROR: afs_extractEntryToFile - Failed to access file metadata.");
+        _afs_LogError("ERROR: afs_extractEntryToFile - Failed to access file metadata.");
         return 2;
     }
     if(!SetFileTime(hFile, NULL, NULL, &ft)) {
-        puts("ERROR: afs_extractEntryToFile - SetFileTime failed.");
+        _afs_LogError("ERROR: afs_extractEntryToFile - SetFileTime failed.");
         CloseHandle(hFile);
         return 2;
     }
@@ -208,9 +218,9 @@ Afs* afs_open(char* filePath) {
     FILE* fp = fopen(filePath, "rb+");
 
     if(fp == NULL) {
-        puts("ERROR: afs_open - AFS Filepath invalid.");
-        puts("Make sure that you have read+write permission for this file.");
-        printf("Filepath: %s\n", filePath);
+        _afs_LogError(  "ERROR: afs_open - AFS Filepath invalid." \
+                        "Make sure that you have read+write permission for this file.");
+        _afs_LogErrorF("Filepath: %s\n", filePath);
         return NULL;
     }
     Afs* afs = (Afs*)malloc(sizeof(Afs));
@@ -253,13 +263,13 @@ AfsEntryInfo afs_getEntryinfo(Afs* afs, int id) {
     AfsEntryInfo out;
     memset(&out, 0x00, sizeof(AfsEntryInfo));
     if(afs == NULL || afs->fstream == NULL) {
-        puts("ERROR: afs_getEntryinfo - Invalid AFS pointer (afs or afs->fstream).");
+        _afs_LogError("ERROR: afs_getEntryinfo - Invalid AFS pointer (afs or afs->fstream).");
         return out;
     }
 
     if(id < 0 || id > afs->header.entrycount) {
-        puts("ERROR: afs_getEntryinfo - Entry ID out of range.");
-        printf("Entry ID: %d\tAFS entry count: %d\n", id, afs->header.entrycount);
+        _afs_LogError("ERROR: afs_getEntryinfo - Entry ID out of range.");
+        _afs_LogErrorF("Entry ID: %d\tAFS entry count: %d\n", id, afs->header.entrycount);
         return out;
     }
 
@@ -267,35 +277,35 @@ AfsEntryInfo afs_getEntryinfo(Afs* afs, int id) {
     return out;
 }
 
-char* afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
+int afs_extractEntryToFile(Afs* afs, int id, const char* folderpath, char* filepath) {
     if(afs == NULL || afs->fstream == NULL) {
-        puts("ERROR: afs_extractEntryToFile - Invalid AFS pointer (afs or afs->fstream).");
-        return NULL;
+        _afs_LogError("ERROR: afs_extractEntryToFile - Invalid AFS pointer (afs or afs->fstream).");
+        return 1;
     }
 
     if(id < 0 || id > afs->header.entrycount) {
-        puts("ERROR: afs_extractEntryToFile - Entry ID out of range.");
-        printf("Entry ID: %d\tAFS entry count: %d\n", id, afs->header.entrycount);
-        return NULL;
+        _afs_LogError("ERROR: afs_extractEntryToFile - Entry ID out of range.");
+        _afs_LogErrorF("Entry ID: %d\tAFS entry count: %d\n", id, afs->header.entrycount);
+        return 2;
     }
 
-    if(output_folderpath == NULL || *output_folderpath == 0x00 ) {
-        puts("ERROR: afs_extractEntryToFile - output_folderpath invalid.");
-        return NULL;
+    if(folderpath == NULL || *folderpath == 0x00 ) {
+        _afs_LogError("ERROR: afs_extractEntryToFile - folderpath invalid.");
+        return 3;
     }
 
     int off = afs->header.entryinfo[id].offset;
     int size = afs->header.entryinfo[id].size;
     u8* buffer = (u8*)malloc(size);
 
-    int folderpath_len = strlen(output_folderpath);
+    int folderpath_len = strlen(folderpath);
 
     // create output file path buffer and zero it out
     char* outpath = (char*)malloc(folderpath_len + AFSMETA_NAMEBUFFERSIZE + 2);
     memset(outpath, 0x00, folderpath_len + AFSMETA_NAMEBUFFERSIZE + 2);
 
     // copy the location of the output file path
-    strncpy(outpath, output_folderpath, folderpath_len);
+    strncpy(outpath, folderpath, folderpath_len);
 
     // at this point, the given argument might be "/path/to/dir/"
     // or it might be "path/to/dir" (notice the missing slash at the end)
@@ -314,12 +324,19 @@ char* afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
     }
 
     int outpathLen = strlen(outpath);
+
+    if(filepath != NULL) {
+        strncpy(filepath, outpath, PATH_MAX-1);
+        filepath[PATH_MAX-1] = 0x00;
+    }
+
     FILE* outfile = fopen(outpath, "wb");
 
     if(outfile == NULL) {
-        puts("ERROR: afs_extractEntryToFile - File pointer failed to create.");
-        printf("outfile path: %s\n", outpath);
-        return NULL;
+        _afs_LogError("ERROR: afs_extractEntryToFile - File pointer failed to create.");
+        _afs_LogErrorF("outfile path: %s\n", outpath);
+        free(outpath);
+        return 4;
     }
 
     fseek(afs->fstream, off, SEEK_SET);
@@ -332,18 +349,19 @@ char* afs_extractEntryToFile(Afs* afs, int id, const char* output_folderpath) {
     // Set the correct last modified date
     _afs_ApplyTimestamp(outpath, afs->meta[id].lastModified);
 
-    return outpath;
+    free(outpath);
+    return 0;
 }
 
 u8* afs_extractEntryToBuffer(Afs* afs, int id) {
     if(afs == NULL || afs->fstream == NULL) {
-        puts("ERROR: afs_extractEntryToBuffer - Invalid AFS pointer (afs or afs->fstream).");
+        _afs_LogError("ERROR: afs_extractEntryToBuffer - Invalid AFS pointer (afs or afs->fstream).");
         return NULL;
     }
 
     if(id < 0 || id > afs->header.entrycount) {
-        puts("ERROR: afs_extractEntryToBuffer - Entry ID out of range.");
-        printf("Entry ID: %d\tAFS entry count: %d\n", id, afs->header.entrycount);
+        _afs_LogError("ERROR: afs_extractEntryToBuffer - Entry ID out of range.");
+        _afs_LogErrorF("Entry ID: %d\tAFS entry count: %d\n", id, afs->header.entrycount);
         return NULL;
     }
 
@@ -361,36 +379,36 @@ void afs_freeBuffer(void* buffer) {
         free(buffer);
 }
 
-int afs_extractFull(Afs* afs, const char* output_folderpath) {
+int afs_extractFull(Afs* afs, const char* folderpath) {
     if(afs == NULL || afs->fstream == NULL) {
-        puts("ERROR: afs_extractFull - Invalid AFS File.");
+        _afs_LogError("ERROR: afs_extractFull - Invalid AFS File.");
         return 1;
     }
-    if(output_folderpath == NULL || *output_folderpath == 0x00 ) {
-        puts("ERROR: afs_extractFull - output_folderpath invalid.");
+    if(folderpath == NULL || *folderpath == 0x00 ) {
+        _afs_LogError("ERROR: afs_extractFull - output_folderpath invalid.");
         return 2;
     }
 
     // In order to ensure each file path will be concatenated correctly,
     // we must ensure the folder path ends with a '/' character.
-    int pathlen = strlen(output_folderpath);
-    char* folderpath = (char*)malloc(pathlen+2);
-    memset(folderpath, 0x00, pathlen+2);
-    strcpy(folderpath, output_folderpath);
+    int pathlen = strlen(folderpath);
+    char* dir = (char*)malloc(pathlen+2);
+    memset(dir, 0x00, pathlen+2);
+    strcpy(dir, folderpath);
 
-    if(output_folderpath[pathlen-1] != PATH_SEP) {
-        folderpath[pathlen++] = PATH_SEP;
+    if(folderpath[pathlen-1] != PATH_SEP) {
+        dir[pathlen++] = PATH_SEP;
     }
 
-    if(access(folderpath, F_OK) != 0) {
-        mkdir(folderpath);
+    if(access(dir, F_OK) != 0) {
+        mkdir(dir);
     }
 
     for(int i=0;i<afs->header.entrycount;i++) {
         AfsEntryInfo info = afs->header.entryinfo[i];
         AfsEntryMetadata meta = afs->meta[i];
-        char filepath[sizeof(folderpath)+AFSMETA_NAMEBUFFERSIZE];
-        strcpy(filepath, folderpath);
+        char filepath[sizeof(dir)+AFSMETA_NAMEBUFFERSIZE];
+        strcpy(filepath, dir);
 
         char name[AFSMETA_NAMEBUFFERSIZE];
         if(*meta.filename == 0x00) {
@@ -423,8 +441,8 @@ int afs_extractFull(Afs* afs, const char* output_folderpath) {
         u8* buffer = (u8*)malloc(info.size);
         FILE* fp = fopen(filepath, "wb");
         if(fp == NULL) {
-            puts("ERROR: afs_extractFull - fp failed to open.");
-            printf("filepath: %s\n", filepath);
+            _afs_LogError("ERROR: afs_extractFull - fp failed to open.");
+            _afs_LogErrorF("filepath: %s\n", filepath);
             continue;
         }
         fseek(afs->fstream, info.offset, SEEK_SET);
@@ -436,23 +454,23 @@ int afs_extractFull(Afs* afs, const char* output_folderpath) {
         // Apply the Timestamp from the metadata section
         _afs_ApplyTimestamp(filepath, meta.lastModified);
     }
-    free(folderpath);
+    free(dir);
     return 0;
 }
 
 int afs_replaceEntry(Afs* afs, int id, u8* data, int data_size) {
     if(afs == NULL || afs->fstream == NULL) {
-        puts("ERROR: afs_replaceEntry - Invalid AFS File.");
+        _afs_LogError("ERROR: afs_replaceEntry - Invalid AFS File.");
         return 1;
     }
     if(id < 0 || id >= afs->header.entrycount) {
-        puts("ERROR: afs_replaceEntry - Entry ID out of range.");
-        printf("Entry ID: %d, AFS Entry Count: %d\n", id, afs->header.entrycount);
+        _afs_LogError("ERROR: afs_replaceEntry - Entry ID out of range.");
+        _afs_LogErrorF("Entry ID: %d, AFS Entry Count: %d\n", id, afs->header.entrycount);
         return 2;
     }
     if(data == NULL || data_size <= 0) {
-        puts("ERROR: afs_replaceEntry - Given data is invalid (NULL or zero size).");
-        printf("data: 0x%08x\tdata_size: %d", *(unsigned int*)&data, data_size);
+        _afs_LogError("ERROR: afs_replaceEntry - Given data is invalid (NULL or zero size).");
+        _afs_LogErrorF("data: 0x%08x\tdata_size: %d", *(unsigned int*)&data, data_size);
         return 3;
     }
 
@@ -468,15 +486,15 @@ int afs_replaceEntry(Afs* afs, int id, u8* data, int data_size) {
 
 int afs_replaceEntriesFromFiles(Afs* afs, int* entries, char** filepaths, int amount_entries) {
     if(afs == NULL || afs->fstream == NULL) {
-        puts("ERROR: afs_replaceEntriesFromFiles - Invalid AFS File.");
+        _afs_LogError("ERROR: afs_replaceEntriesFromFiles - Invalid AFS File.");
         return 1;
     }
     if(entries == NULL || filepaths == NULL) {
-        puts("ERROR: afs_replaceEntriesFromFiles - Invalid array args.");
+        _afs_LogError("ERROR: afs_replaceEntriesFromFiles - Invalid array args.");
         return 2;
     }
     if(amount_entries <= 0) {
-        puts("ERROR: afs_replaceEntriesFromFiles - Invalid replaced entry count.");
+        _afs_LogError("ERROR: afs_replaceEntriesFromFiles - Invalid replaced entry count.");
         return 3;
     }
 
@@ -497,8 +515,8 @@ int afs_replaceEntriesFromFiles(Afs* afs, int* entries, char** filepaths, int am
         allEntriesSkipped = false;
         FILE* curFile = fopen(filepaths[i], "rb");
         if(curFile == NULL) {
-            puts("ERROR: afs_replaceEntriesFromFiles - a filepath isn't accessible or doesn't exist!");
-            printf("File path #%d: %s\n", i, filepaths[i]);
+            _afs_LogError("ERROR: afs_replaceEntriesFromFiles - a filepath isn't accessible or doesn't exist!");
+            _afs_LogErrorF("File path #%d: %s\n", i, filepaths[i]);
             return 2;
         }
         int size = ftell(curFile);
@@ -524,7 +542,7 @@ int afs_replaceEntriesFromFiles(Afs* afs, int* entries, char** filepaths, int am
         fclose(curFile);
     }
     if(allEntriesSkipped) {
-        puts("ERROR: afs_replaceEntriesFromFiles - All entries were skipped.");
+        _afs_LogError("ERROR: afs_replaceEntriesFromFiles - All entries were skipped.");
         return 2;
     }
 
@@ -624,16 +642,16 @@ int afs_replaceEntriesFromFiles(Afs* afs, int* entries, char** filepaths, int am
 
 int afs_renameEntry(Afs* afs, int id, const char* new_name, bool permanent) {
     if(afs == NULL || afs->fstream == NULL) {
-        puts("ERROR: afs_renameEntry - Invalid AFS File.");
+        _afs_LogError("ERROR: afs_renameEntry - Invalid AFS File.");
         return 1;
     }
     if(id < 0 || id >= afs->header.entrycount) {
-        puts("ERROR: afs_renameEntry - Entry ID out of range.");
-        printf("Entry ID: %d, AFS Entry Count: %d\n", id, afs->header.entrycount);
+        _afs_LogError("ERROR: afs_renameEntry - Entry ID out of range.");
+        _afs_LogErrorF("Entry ID: %d, AFS Entry Count: %d\n", id, afs->header.entrycount);
         return 2;
     }
     if(new_name == NULL || *new_name == 0x00) {
-        puts("ERROR: afs_renameEntry - new_name is empty/null.");
+        _afs_LogError("ERROR: afs_renameEntry - new_name is empty/null.");
         return 3;
     }
 
@@ -654,12 +672,12 @@ AfsEntryMetadata afs_getEntryMetadata(Afs* afs, int id) {
     memset(&out, 0x00, sizeof(AfsEntryMetadata));
 
     if(afs == NULL || afs->fstream == NULL) {
-        puts("ERROR: afs_getEntryMetadata - Invalid AFS File.");
+        _afs_LogError("ERROR: afs_getEntryMetadata - Invalid AFS File.");
         return out;
     }
     if(id < 0 || id >= afs->header.entrycount) {
-        puts("ERROR: afs_getEntryMetadata - Entry ID out of range.");
-        printf("Entry ID: %d, AFS Entry Count: %d\n", id, afs->header.entrycount);
+        _afs_LogError("ERROR: afs_getEntryMetadata - Entry ID out of range.");
+        _afs_LogErrorF("Entry ID: %d, AFS Entry Count: %d\n", id, afs->header.entrycount);
         return out;
     }
 
@@ -670,12 +688,12 @@ AfsEntryMetadata afs_getEntryMetadata(Afs* afs, int id) {
 
 int afs_setEntryMetadata(Afs* afs, int id, AfsEntryMetadata new_meta, bool permanent) {
     if(afs == NULL || afs->fstream == NULL) {
-        puts("ERROR: afs_setEntryMetadata - Invalid AFS File.");
+        _afs_LogError("ERROR: afs_setEntryMetadata - Invalid AFS File.");
         return 1;
     }
     if(id < 0 || id >= afs->header.entrycount) {
-        puts("ERROR: afs_setEntryMetadata - Entry ID out of range.");
-        printf("Entry ID: %d, AFS Entry Count: %d\n", id, afs->header.entrycount);
+        _afs_LogError("ERROR: afs_setEntryMetadata - Entry ID out of range.");
+        _afs_LogErrorF("Entry ID: %d, AFS Entry Count: %d\n", id, afs->header.entrycount);
         return 2;
     }
     memcpy(&(afs->meta[id]), &new_meta, sizeof(AfsEntryMetadata));
@@ -691,8 +709,8 @@ int afs_setEntryMetadata(Afs* afs, int id, AfsEntryMetadata new_meta, bool perma
 
 Timestamp afs_getLastModifiedDate(Afs* afs, int id) {
     if(id < 0 || id >= afs->header.entrycount) {
-        puts("ERROR: afs_getLastModifiedDate - Entry ID out of range.");
-        printf("Entry ID: %d\tAFS Entry Count: %d\n", id, afs->header.entrycount);
+        _afs_LogError("ERROR: afs_getLastModifiedDate - Entry ID out of range.");
+        _afs_LogErrorF("Entry ID: %d\tAFS Entry Count: %d\n", id, afs->header.entrycount);
         Timestamp t;
         memset(&t, 0x00, sizeof(Timestamp));
         return t;

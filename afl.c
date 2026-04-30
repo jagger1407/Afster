@@ -1,5 +1,15 @@
 #include "afl.h"
 
+void _afl_LogError(const char* message) {
+    fprintf(stderr, "%s\n", message);
+}
+void _afl_LogErrorF(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+}
+
 Afl* afl_open(const char* aflPath) {
     if(aflPath == nullptr || *aflPath == '\0') {
         return NULL;
@@ -7,8 +17,8 @@ Afl* afl_open(const char* aflPath) {
     FILE* fp = fopen(aflPath, "rb+");
 
     if(fp == NULL) {
-        puts("ERROR: afl_open - AFL Filepath invalid.");
-        printf("Filepath: %s\n", aflPath);
+        _afl_LogError("ERROR: afl_open - AFL Filepath invalid.");
+        _afl_LogErrorF("Filepath: %s\n", aflPath);
         return NULL;
     }
     Afl* afl = (Afl*)malloc(sizeof(Afl));
@@ -26,14 +36,14 @@ Afl* afl_open(const char* aflPath) {
 
 Afl* afl_create(Afs* afs, char* filepath) {
     if(afs == NULL || afs->header.entrycount < 0) {
-        puts("ERROR: afl_create - Invalid afs.");
+        _afl_LogError("ERROR: afl_create - Invalid afs.");
         return NULL;
     }
     if(filepath != NULL) {
         u32 len = strlen(filepath);
         if(strcmp(filepath + len - 4, ".afl") != 0 && strcmp(filepath + len - 4, ".AFL") != 0) {
-            puts("ERROR: afl_new - filepath doesn't point to a valid .afl file.");
-            puts("INFO: path has to end with either '.afl' or '.AFL'.");
+            _afl_LogError("ERROR: afl_new - filepath doesn't point to a valid .afl file.");
+            _afl_LogError("INFO: path has to end with either '.afl' or '.AFL'.");
             return NULL;
         } 
     }
@@ -59,8 +69,8 @@ Afl* afl_new(u16 entries, char* filepath) {
     if(filepath != NULL) {
         u32 len = strlen(filepath);
         if(strcmp(filepath + len - 4, ".afl") != 0 && strcmp(filepath + len - 4, ".AFL") != 0) {
-            puts("ERROR: afl_new - filepath doesn't point to a valid .afl file.");
-            puts("INFO: path has to end with either '.afl' or '.AFL'.");
+            _afl_LogError("ERROR: afl_new - filepath doesn't point to a valid .afl file.");
+            _afl_LogError("INFO: path has to end with either '.afl' or '.AFL'.");
             return NULL;
         } 
     }
@@ -81,8 +91,8 @@ Afl* afl_new(u16 entries, char* filepath) {
 
 char* afl_getName(Afl* afl, int id) {
     if(id < 0 || id >= afl->head.entrycount) {
-        puts("ERROR: afl_getName - Entry ID out of range.");
-        printf("Entry ID: %d\tAFL Entry Count: %d\n", id, afl->head.entrycount);
+        _afl_LogError("ERROR: afl_getName - Entry ID out of range.");
+        _afl_LogErrorF("Entry ID: %d\tAFL Entry Count: %d\n", id, afl->head.entrycount);
         return NULL;
     }
     return _AFL_NAME(afl, id);
@@ -94,15 +104,15 @@ int afl_getEntrycount(Afl* afl) {
 
 int afl_rename(Afl* afl, int id, const char* newName) {
     if(afl == NULL) {
-        puts("ERROR: afl_rename - afl null.");
+        _afl_LogError("ERROR: afl_rename - afl null.");
         return 1;
     }
     if(afl->fstream == NULL) {
-        puts("ERROR: afl_rename - afl exists, but afs->fstream doesn't.");
+        _afl_LogError("ERROR: afl_rename - afl exists, but afs->fstream doesn't.");
         return 1;
     }
     if(id < 0 || id > afl->head.entrycount) {
-        puts("ERROR: afl_rename - Entry ID out of range.");
+        _afl_LogError("ERROR: afl_rename - Entry ID out of range.");
         return 2;
     }
 
@@ -113,7 +123,7 @@ int afl_rename(Afl* afl, int id, const char* newName) {
 
 void afl_free(Afl* afl) {
     if(afl == NULL) {
-        puts("WARNING: afl_free - afl pointer already freed. Returning.");
+        _afl_LogError("WARNING: afl_free - afl pointer already freed. Returning.");
         return;
     }
     fclose(afl->fstream);
@@ -124,11 +134,11 @@ void afl_free(Afl* afl) {
 
 int afl_save(Afl* afl) {
     if(afl == NULL) {
-        puts("ERROR: afl_save - afl null.");
+        _afl_LogError("ERROR: afl_save - afl null.");
         return 1;
     }
     if(afl->fstream == NULL) {
-        puts("ERROR: afl_save - fstream null.");
+        _afl_LogError("ERROR: afl_save - fstream null.");
         return 1;
     }
     fseek(afl->fstream, 0, SEEK_SET);
@@ -141,12 +151,12 @@ int afl_save(Afl* afl) {
 
 int afl_saveNew(Afl* afl, const char* filepath) {
     if(afl == NULL) {
-        puts("ERROR: afl_save - afl null.");
+        _afl_LogError("ERROR: afl_save - afl null.");
         return 1;
     }
     FILE* outfile = fopen(filepath, "wb+");
     if(outfile == NULL) {
-        puts("ERROR: afl_save - filepath can't be written to.");
+        _afl_LogError("ERROR: afl_save - filepath can't be written to.");
         return 2;
     }
     fseek(afl->fstream, 0, SEEK_SET);
@@ -159,21 +169,21 @@ int afl_saveNew(Afl* afl, const char* filepath) {
 
 int afl_importAfl(Afl* afl, Afs* afs, bool permament) {
     if(afs == NULL) {
-        puts("ERROR: afl_importAfl - afs null.");
+        _afl_LogError("ERROR: afl_importAfl - afs null.");
         return 1;
     }
     if(afs->fstream == NULL) {
-        puts("ERROR: afl_importAfl - afs exists, but afs->fstream doesn't.");
+        _afl_LogError("ERROR: afl_importAfl - afs exists, but afs->fstream doesn't.");
         return 1;
     }
     if(afl == NULL) {
-        puts("ERROR: afl_importAfl - afl null.");
+        _afl_LogError("ERROR: afl_importAfl - afl null.");
         return 2;
     }
 
     if(afl->head.entrycount != afs->header.entrycount) {
-        puts("WARNING: afl_importAfl - AFS file count and AFL file count are mismatched.");
-        printf("AFS file count: %d\nAFL file count: %d\n", afs->header.entrycount, afl->head.entrycount);
+        _afl_LogError("WARNING: afl_importAfl - AFS file count and AFL file count are mismatched.");
+        _afl_LogErrorF("AFS file count: %d\nAFL file count: %d\n", afs->header.entrycount, afl->head.entrycount);
     }
 
     for(int i=0;i<afs->header.entrycount;i++) {
